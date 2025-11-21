@@ -1,0 +1,29 @@
+{{ define "index" }}
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Blogging</title>
+</head>
+<body>
+	{{ template "header" . }}
+	<h3>Posts: </h3>
+	<ul>
+		{{ range . }}
+		
+		<li>
+			<b>ID</b>: {{ .Id }} <br>
+			<b>Title</b>: {{ .Title }} <br>
+			<b>Body</b>: {{ .Body }} <br>
+			<b>Date</b>: {{ .Date }}	 <br>		
+		</li>
+		<br>
+
+		{{ end }}
+	</ul>
+	{{ template "footer" . }}
+</body>
+</html>
+
+{{ end }}
