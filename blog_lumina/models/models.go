@@ -26,3 +26,9 @@ type Post struct {
 	UpdatedAt time.Time
 	IsPublished bool 
 }
+
+type ShowPost struct {
+	Post Post
+	CreatedAtFormatted string
+	UpdatedAtFormatted string
+}
