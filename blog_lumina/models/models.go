@@ -31,4 +31,5 @@ type ShowPost struct {
 	Post Post
 	CreatedAtFormatted string
 	UpdatedAtFormatted string
+	User User
 }

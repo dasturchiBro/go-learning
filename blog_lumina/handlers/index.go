@@ -8,7 +8,7 @@ import (
 
 
 func Index(w http.ResponseWriter, r *http.Request) {
-	posts := db.GetPosts(app.DB)
+	posts := db.GetPosts()
 	if err := app.Tmpl.ExecuteTemplate(w, "index", posts); err != nil {
 		http.Error(w, err.Error(), 500)
 	}

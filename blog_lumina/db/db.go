@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"lumina/models"
+	"lumina/app"
 )
 
 func Connect() *pgxpool.Pool {
@@ -15,7 +16,8 @@ func Connect() *pgxpool.Pool {
 	return db
 }
 
-func GetPosts(db *pgxpool.Pool) []models.ShowPost {
+func GetPosts() []models.ShowPost {
+	db := app.DB
 	rows, err := db.Query(
 		context.Background(), 
 		"SELECT id, title, body, user_id, category, image, views, created_at, updated_at, is_published FROM posts",
@@ -31,16 +33,54 @@ func GetPosts(db *pgxpool.Pool) []models.ShowPost {
 		if err != nil {
 			log.Fatal(err)
 		}
+		row := db.QueryRow(context.Background(), "SELECT id, name FROM users WHERE id = $1", p.UserId)
+		var newUser models.User
+		err = row.Scan(&newUser.Id, &newUser.Name)
+		if err != nil {
+			log.Fatal(err)
+		}
 		show := models.ShowPost{
 			Post: p,
 			CreatedAtFormatted: p.CreatedAt.Format("01/02/2006"),
 			UpdatedAtFormatted: p.UpdatedAt.Format("01/02/2006"),
+			User: newUser,
 		}
 		posts = append(posts, show)
 	}
 	return posts
 } 
 
-func InsertUser(db *pgxpool.Pool, user models.User) {
+func GetPostById(id int) (models.ShowPost, bool) {
+	rows, err := app.DB.Query(context.Background(), "SELECT * FROM posts WHERE id = $1", id)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	var show models.ShowPost
+	if !rows.Next() {
+		return show, false
+	}
+	var post models.Post
+	err = rows.Scan(&post.Id,&post.Title, &post.Body, &post.UserId, &post.Category, &post.Image, &post.Views, &post.CreatedAt, &post.UpdatedAt, &post.IsPublished)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row := app.DB.QueryRow(context.Background(), "SELECT id, name FROM users WHERE id = $1", post.UserId)
+	var newUser models.User
+	err = row.Scan(&newUser.Id, &newUser.Name)
+	log.Print(newUser)
+	if err != nil {
+		log.Fatal(err)
+	}
+	show.Post = post
+	show.CreatedAtFormatted = post.CreatedAt.Format("01/02/2006")
+	show.UpdatedAtFormatted = post.UpdatedAt.Format("01/02/2006")
+	show.User = newUser
+	return show, true
+}
 
+
+
+func InsertUser(user models.User) {
+	// Write a function to INSERT a user.
 }

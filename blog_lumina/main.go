@@ -22,7 +22,8 @@ func AppInit() {
 
 func main() {
 	AppInit()
-
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	http.HandleFunc("/", handlers.Index)
+	http.HandleFunc("/post/{id}", handlers.Post)
 	http.ListenAndServe(":80", nil)
 }
