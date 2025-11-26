@@ -3,6 +3,7 @@ package handlers
 import (
 	"lumina/models"
 	"net/http"
+	"lumina/db"
 )
 
 func SaveUser(w http.ResponseWriter, r *http.Request) {
@@ -15,12 +16,15 @@ func SaveUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := models.User{
-		Name: r.FormValue("name")
-		Email: r.FormValue("email")
-		Hash_pass: r.FormValue("password")
+		Name: r.FormValue("name"),
+		Email: r.FormValue("email"),
+		Hash_pass: r.FormValue("password"),
+		Role: "user",
 	}
-	if err := InsertUser(user); err == "email" {
+	if err := db.InsertUser(user); err == "email" {
 		http.Error(w, "User with this email already exists!", 500)
+	} else if err == "error" {
+		http.Error(w, "something went wrong, please try again", 500)
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

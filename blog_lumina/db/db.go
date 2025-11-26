@@ -81,6 +81,18 @@ func GetPostById(id int) (models.ShowPost, bool) {
 
 
 
-func InsertUser(user models.User) {
-	// Write a function to INSERT a user.
+func InsertUser(user models.User) string {
+	db := app.DB  
+	rows, err := db.Query(context.Background(), "SELECT id FROM users WHERE email = $1", user.Email)
+	if err != nil {
+		return "error"
+	}
+	if rows.Next() {
+		return "email"
+	}
+	_, err = db.Exec(context.Background(), "INSERT INTO users (name, email, hash_pass, role, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)", user.Name, user.Email, user.Hash_pass, user.Role, user.CreatedAt, user.UpdatedAt)
+	if err != nil {
+		return "error"
+	}
+	return "success"
 }

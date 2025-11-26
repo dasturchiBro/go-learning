@@ -64,24 +64,18 @@ document.getElementById('loginModal').addEventListener('click', (e) => {
         
         <div class="input-group signup-field" style="display: none;">
             <label>Full Name</label>
-            <input type="text" placeholder="John Doe">
+            <input type="text" name="name" placeholder="John Doe">
         </div>
 
         <div class="input-group">
             <label>Email</label>
-            <input type="email" placeholder="you@example.com">
+            <input type="email" name="email" placeholder="you@example.com">
         </div>
         
         <div class="input-group">
             <label>Password</label>
-            <input type="password" placeholder="••••••••">
+            <input type="password" name="password" placeholder="••••••••">
         </div>
-
-        <div class="input-group signup-field" style="display: none;">
-            <label>Confirm Password</label>
-            <input type="password" placeholder="••••••••">
-        </div>
-
         <button class="modal-btn" id="modal-btn">Sign In</button>
         
         <div style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
