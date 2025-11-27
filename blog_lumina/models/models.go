@@ -33,3 +33,9 @@ type ShowPost struct {
 	UpdatedAtFormatted string
 	User User
 }
+
+type Session struct {
+	SessionId string
+	UserId int 
+	ExpiresAt time.Time
+}

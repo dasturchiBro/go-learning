@@ -6,6 +6,7 @@ import (
 	"log"
 	"lumina/models"
 	"lumina/app"
+	"time"
 )
 
 func Connect() *pgxpool.Pool {
@@ -81,18 +82,40 @@ func GetPostById(id int) (models.ShowPost, bool) {
 
 
 
-func InsertUser(user models.User) string {
+func InsertUser(user models.User) (int, string) {
 	db := app.DB  
 	rows, err := db.Query(context.Background(), "SELECT id FROM users WHERE email = $1", user.Email)
 	if err != nil {
-		return "error"
+		return 0, "error"
 	}
 	if rows.Next() {
-		return "email"
+		return 0, "email"
 	}
-	_, err = db.Exec(context.Background(), "INSERT INTO users (name, email, hash_pass, role, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)", user.Name, user.Email, user.Hash_pass, user.Role, user.CreatedAt, user.UpdatedAt)
+	row := db.QueryRow(context.Background(), "INSERT INTO users (name, email, hash_pass, role, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", user.Name, user.Email, user.Hash_pass, user.Role, user.CreatedAt, user.UpdatedAt)
+	var UserId int
+	err = row.Scan(&UserId)
 	if err != nil {
-		return "error"
+		log.Print(UserId, err)
+		return 0, "error"
 	}
-	return "success"
+	return UserId, "success"
+}
+
+func GetSessionExpiryTime(session models.Session) (time.Time, error) {
+	db := app.DB 
+	var expiryTime time.Time
+	row := db.QueryRow(context.Background(), "SELECT session_id, user_id, expires_at FROM sessions WHERE session_id = $1 AND user_id = $2", session.SessionId, session.UserId)
+	err := row.Scan(&expiryTime)
+	return expiryTime, err
+}
+
+func InsertSession(session models.Session) error {
+	_, err := app.DB.Exec(context.Background(), "INSERT INTO sessions (session_id, user_id, expires_at) VALUES ($1, $2, $3)", session.SessionId, session.UserId, session.ExpiresAt)
+	return err
+}
+
+func DeleteSession(session models.Session) error {
+	db := app.DB  
+	_, err := db.Exec(context.Background(), "DELETE FROM sessions WHERE session_id = $1 AND user_id = $2", session.SessionId, session.UserId)
+	return err
 }
