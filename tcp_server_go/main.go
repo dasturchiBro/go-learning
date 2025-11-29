@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"log"
-	"io"
+	"time"
+	"bufio"
+	"strings"
 )
 
 
@@ -30,10 +32,29 @@ func main() {
 func handleRequest(conn net.Conn) {
 	defer conn.Close()
 
-	fmt.Printf("Serving %s\n", conn.RemoteAddr().String())
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 
-	_, err := io.Copy(conn, conn)
-	if err != nil {
-		log.Print(err)
+	for {
+		conn.SetDeadline(time.Now().Add(30 * time.Second))
+		msg, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		msg = strings.TrimSpace(msg)
+		if msg == "" {
+			continue
+		}
+
+		fmt.Printf("New messsage: ", msg)
+
+		var command string
+		fmt.Println("Enter your command: ")
+		fmt.Scanln(&command)
+		_, err = writer.WriteString(command)
+		if err != nil {
+			fmt.Printf("Err: %v\n", err)
+		}
+		writer.Flush()
 	}
 }
