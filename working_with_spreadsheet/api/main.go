@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+
+	"fmt"
 )
 
 type Person struct {
@@ -44,12 +46,27 @@ func personHandler(c *gin.Context) {
 	c.JSON(200, person)
 }
 
+func userHandler(c *gin.Context) {
+	userName := c.Param("name")
+	if userName == "" {
+		ReError("Name cannot be empty", c)
+	}
+	c.JSON(200, gin.H{
+		"message": fmt.Sprintf("Hello, %s", userName),
+	})
+}
+
 func main() {
 	r := gin.Default()
 
-	r.GET("/hello", helloHandler)
 	r.POST("/echo", echoHandler)
-	r.POST("/person", personHandler)
+	r.GET("/hello", helloHandler)
+
+	v1 := r.Group("/v1")
+	{
+		v1.POST("/person", personHandler)
+		v1.GET("/user/:name", userHandler)
+	}
 
 	r.Run()
 }
