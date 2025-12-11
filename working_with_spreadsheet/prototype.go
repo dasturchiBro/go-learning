@@ -118,7 +118,7 @@ func AddScoresToStudents(f *excelize.File) {
 		totalValue_int, err := strconv.Atoi(totalValue)
 		Check(err)
 		fmt.Println(totalValue_int)
-		percent := fmt.Sprintf("%.2f", (float64(total)/float64(totalValue_int)) * 100)
+		percent := fmt.Sprintf("%.0f", (float64(total)/float64(totalValue_int)) * 100)
 		Check(f.SetCellValue("Sheet1", letters[len(parts)+1]+indexOfRow, (percent)))
 		Check(f.SetCellValue("Sheet1", letters[len(parts)]+indexOfRow, total))
 		start_index += 1

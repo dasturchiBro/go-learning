@@ -165,6 +165,17 @@ func RateMiddleware(c *gin.Context) {
 	c.Next()
 }
 
+func ValidatorMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != "POST" && c.Request.Method != "PUT" {
+			return
+		}
+		// fmt.Println(c.GetRawData())
+		c.Next()
+	}
+}
+
+
 func main() {
 	r := gin.Default()
 	
@@ -177,7 +188,7 @@ func main() {
 	v1 := r.Group("/v1")
 	v1.Use(RateMiddleware)
 	v1.Use(AuthMiddleware)
-
+	v1.Use(ValidatorMiddleware())
 	{
 		v1.POST("/person", personHandler)
 		v1.GET("/user/:name", userHandler)
