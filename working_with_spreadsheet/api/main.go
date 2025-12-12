@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"fmt"
 	"time"
+	"encoding/json"
+	"io"
+	"bytes"
 )
 
 type Person struct {
@@ -137,18 +140,16 @@ var requestsMap = make(map[string][]time.Time)
 
 func RateMiddleware(c *gin.Context) {
 	ip := c.ClientIP()
-	list, ok := requestsMap[ip]
-	fmt.Println(ip, list, ok)
+	_, ok := requestsMap[ip]
+	now := time.Now()
+	threshold := 60 * time.Second
 	if !ok {
-		requestsMap[ip] = []time.Time{time.Now()}
+		requestsMap[ip] = []time.Time{now}
 	} else {
 		filtered := []time.Time{} 
-		for index, value := range requestsMap[ip] {
-			filtered = requestsMap[ip]
-			threshold := 60 * time.Second
-			duration := time.Now().Sub(value)
-			if duration > threshold {
-				filtered = append(requestsMap[ip][:index], requestsMap[ip][index+1:]...)
+		for _, value := range requestsMap[ip] {
+			if now.Sub(value) <= threshold {
+				filtered = append(filtered, value)
 			}
 		}
 		requestsMap[ip] = filtered
@@ -165,14 +166,61 @@ func RateMiddleware(c *gin.Context) {
 	c.Next()
 }
 
-func ValidatorMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.Request.Method != "POST" && c.Request.Method != "PUT" {
+func ValidatorMiddleware(c *gin.Context) {
+	if c.Request.Method != "POST" && c.Request.Method != "PUT" {
+		c.Next()
+		return
+	}
+	data, err := c.GetRawData()
+	if err != nil {
+		ReError("Invalid JSON format during validation", c)
+		c.Abort()
+		return
+	}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
+	var dat map[string]interface{}
+	if err := json.Unmarshal(data, &dat); err != nil {
+		ReError("Invalid JSON format during validation", c)
+		c.Abort()
+		return
+	}
+
+	allowedSet := map[string]bool{"name": true, "age": true}
+	for key := range dat {
+		if !allowedSet[key] {
+			ReError(fmt.Sprintf("Unexpected field: %v", key), c)
+			c.Abort()
 			return
 		}
-		// fmt.Println(c.GetRawData())
-		c.Next()
 	}
+
+	value, ok := dat["name"]
+	if !ok {
+		ReError("Field name doesn't exist", c)
+		c.Abort()
+		return
+	}
+	_, isString := value.(string)
+	if !isString {
+		ReError(fmt.Sprintf("Wrong type error: %v should be a string", value), c)
+		c.Abort()
+		return
+	}
+
+	age, ok := dat["age"]
+	if !ok {
+		ReError("Field age doesn't exist", c)
+		c.Abort()
+		return
+	}
+	_, isNumber := age.(float64)
+	if !isNumber {
+		ReError(fmt.Sprintf("Wrong type error: %v should be a number", age), c)
+		c.Abort()
+		return
+	}
+	c.Set("body", dat)
+	c.Next()
 }
 
 
@@ -187,8 +235,8 @@ func main() {
 
 	v1 := r.Group("/v1")
 	v1.Use(RateMiddleware)
-	v1.Use(AuthMiddleware)
-	v1.Use(ValidatorMiddleware())
+	// v1.Use(AuthMiddleware)
+	v1.Use(ValidatorMiddleware)
 	{
 		v1.POST("/person", personHandler)
 		v1.GET("/user/:name", userHandler)
