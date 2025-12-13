@@ -15,3 +15,5 @@ func main() {
 
 	r.Run()
 }
+
+//curl -X POST http://127.0.0.1:8080/v1/xlsx -H "Content-Type: application/json" -d "{\"header\":[\"11\",\"4\",\"1-BSB\"],\"criteria\":[\"Writing 10\",\"Grammar 5\", \"Vocabulary 5\"],\"students\":[[\"Fayozbek\"[1,2,3]],[\"Anton\"[31,32,23]]]}"

@@ -62,26 +62,38 @@ func BuildXLSX(req models.XLSXRequest) (*excelize.File, error) {
 		return nil, err
 	}
 
-	// // START - Adding students //
-	// for index, student := range req.Students {
-	// 	if len(req.Criteria) != len(student[1:]) {
-	// 		return nil, errors.New("number of criteria should be the same")
-	// 	}
-	// 	if err := f.SetCellValue("Sheet1", "A" + strconv.Itoa(2+(index + 1)), index+1); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if err := f.SetCellValue("Sheet1", "B" + strconv.Itoa(2+(index + 1)), student[0]); err != nil {
-	// 		return nil, err
-	// 	}
-	// 	for index, c := range student[1:] {
-	// 		col := colName(index + criteriaStart)
-	// 		if err := f.SetCellValue("Sheet1", col + strconv.Itoa(2+(index + 1)), c); err != nil {
-	// 			return nil, err
-	// 		}
-	// 	}
+	// START - Adding students //
+	studentsStartNumber := 6
+	for index, student := range req.Students {
+		if len(req.Criteria) != len(student.Points) {
+			return nil, errors.New("number of criteria should be the same")
+		}
+		if err := f.SetCellValue("Sheet1", "A" + strconv.Itoa(studentsStartNumber+(index)), index+1); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue("Sheet1", "B" + strconv.Itoa(studentsStartNumber+(index)), student.Name); err != nil {
+			return nil, err
+		}
+		studentTotalPoints := 0.0
+		for i, c := range student.Points {
+			col := colName(i + criteriaStart)
+			
+			studentTotalPoints += c
+			if err := f.SetCellValue("Sheet1", col + strconv.Itoa(studentsStartNumber+(index)), c); err != nil {
+				return nil, err
+			}
+		}
+		col := colName(len(student.Points) + criteriaStart)
+		if err := f.SetCellValue("Sheet1", col + strconv.Itoa(studentsStartNumber+(index)), studentTotalPoints); err != nil {
+			return nil, err
+		}
+		if err := f.SetCellValue("Sheet1", colName(len(student.Points) + criteriaStart + 1) + strconv.Itoa(studentsStartNumber+(index)), strconv.FormatFloat((studentTotalPoints/float64(totalPoints)) * 100, 'f', 0, 64) + "%"); err != nil {
+			return nil, err
+		}
+
 		
-	// }
-	// // END - Adding students //
+	}
+	// END - Adding students //
 
 	// Style Start
 	if err := f.SetRowHeight("Sheet1", 5, 40); err != nil {
