@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+	"xlsx/db"
+	"xlsx/app"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -17,7 +19,16 @@ var startKeyboard = tgbotapi.NewReplyKeyboard(
 	),
 )
 
+func AppInit() {
+	var err error
+	app.DB, err = db.Connect()
+	if err != nil {
+		log.Fatal("couldn't connect to db: ", err)
+	}
+}
+
 func main() {
+	AppInit()
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_BOT_API"))
 	if err != nil {
 		log.Fatal(err)
