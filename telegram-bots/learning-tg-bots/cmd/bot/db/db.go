@@ -9,15 +9,63 @@ import (
 	"xlsxbot/app"
 )
 
-func Connect() *pgxpool.Pool {
+func Connect() (*pgxpool.Pool, error) {
 	return pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 }
 
-func SelectUserByUserID(user_id string) (int, error) {
-	var id int
-	err := app.DB.QueryRow(context.Background(), "SELECT id FROM users WHERE user_id = $1", user_id).Scan(&id) 
+func UserExistsByUserID(user_id int64) (bool, error) {
+	var exists bool
+	err := app.DB.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)", user_id).Scan(&exists) 
+	return exists, err
+}
+
+func InsertUser(user_id int64) (int, error) {
+	var id int 
+	query := `INSERT INTO users (user_id, stage) VALUES ($1, $2) RETURNING id`
+	err := app.DB.QueryRow(context.Background(), query, user_id, "main").Scan(&id)
+	return id, err
+}
+
+func GetStageByUserID(chatID int64) (string, error) {
+	query := "SELECT stage FROM users where user_id = $1"
+	var stage string
+	err := app.DB.QueryRow(context.Background(), query, chatID).Scan(&stage)
+	return stage, err
+}
+
+func SetStageByUserID(chatID int64, value string) (bool, error) {
+	exists, err := UserExistsByUserID(chatID)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+	query := "UPDATE users SET stage = $1 WHERE user_id = $2 RETURNING stage"
+	var stage string
+	err = app.DB.QueryRow(context.Background(), query, value, chatID).Scan(&stage)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func GetClassesByUserID(chatID int64) ([]models.Class, error) {
+	query := "SELECT * FROM classes WHERE user_id = $1"
+	rows, err := app.DB.Query(context.Background(), query, chatID)
 	if err != nil {
 		return nil, err
 	}
-	return id, nil
+	classes := make([]models.Class, 0)
+	if !rows.Next() {
+		return classes, nil
+	}
+	for rows.Next() {
+		var class models.Class
+		err := rows.Scan(&class.ID, &class.Name, &class.Grade, &class.UserID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return classes, nil
 }

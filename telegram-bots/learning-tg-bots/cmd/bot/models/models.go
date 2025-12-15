@@ -5,14 +5,14 @@ import (
 )
 
 type User struct {
-	Id int
-	UserID string
-	Stage string
+	ID int
 	CreatedAt time.Time
+	UserID int64
+	Stage string
 }
 
 type Student struct {
-	Id int
+	ID int
 	Name string
 	ClassID int 
 	Points string 
@@ -20,7 +20,8 @@ type Student struct {
 }
 
 type Class struct {
-	Id int 
+	ID int 
 	Name string 
 	Grade int
+	UserID int64
 }
