@@ -69,3 +69,10 @@ func GetClassesByUserID(chatID int64) ([]models.Class, error) {
 	}
 	return classes, nil
 }
+
+func AddClass(chatID int64, className string, grade int) (int, error) {
+	query := "INSERT INTO classes (name, grade, user_id) VALUES ($1, $2, $3) RETURNING id"
+	var id int
+	err := app.DB.QueryRow(context.Background(), query, className, grade, chatID).Scan(&id)
+	return id, err
+}

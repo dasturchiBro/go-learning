@@ -24,11 +24,13 @@ func SendPhoneNumberButton(chatID int64, bot *tgbotapi.BotAPI) error {
 }
 
 func GoToMainMenu(chatID int64, bot *tgbotapi.BotAPI) error {
+	db.SetStageByUserID(chatID, "main")
 	msg := tgbotapi.NewMessage(chatID, "*Main Menu \n\n- Choose one of the options -\n\t\t1) Classes - to see your classes\n\t\t2) Templates - to see Excel templates\n\t\t3) Help - to see instructions.")
 	mainMenuKeyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("📚 Classes")),
 		tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("📐 Templates")),
 		tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("❓ Help")),
+		tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("🏡 Main Menu")),
 	)
 	msg.ReplyMarkup = mainMenuKeyboard
 
@@ -68,4 +70,8 @@ func ShowClasses(chatID int64, bot *tgbotapi.BotAPI) (error) {
 
 	_, err = bot.Send(&msg)
 	return err
+}
+
+func AddClass(chatID int64, bot *tgbotapi.BotAPI) (error) {
+	return nil
 }
