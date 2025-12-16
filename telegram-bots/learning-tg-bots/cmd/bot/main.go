@@ -65,7 +65,7 @@ func main() {
 				if err != nil {
 					log.Print(err)
 				}
-				if update.Message.Text == "🏡 Main Menu" {
+				if update.Message.Text == "🏡 Main Menu" || update.Message.Text == "/start" {
 					db.SetStageByUserID(update.Message.Chat.ID, "main")
 					handlers.GoToMainMenu(update.Message.Chat.ID, bot)
 				} else if update.Message.Text == "📚 Classes" && stage == "main" {
@@ -78,12 +78,15 @@ func main() {
 					message := update.Message.Text
 					parts := strings.Split(strings.TrimSpace(message), "\n")
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+					success := false
 					if len(parts) != 2 {
 						msg.Text = "Please enter the class information in the correct order: \n\t\tClass Name (e.g 11.01-E1)\n\t\tGrade in numbers (e.g. 11)"
+						msg.ReplyMarkup = handlers.CancelKeyboard
 					} else {
 						num, err := strconv.Atoi(parts[1])
 						if err != nil {
-							msg.Text = "Grade should be a number: \n\t\tClass Name (e.g 11.01-E1)\n\t\tGrade (e.g. 11)"
+							msg.Text = "Grade should be a number: \n\t\tClass Name (e.g 11.01-E1)\n\t\tGrade (e.g. 11)\nTry again"
+							msg.ReplyMarkup = handlers.CancelKeyboard
 						} else {
 							_, err := db.AddClass(update.Message.Chat.ID, parts[0], num)
 							if err != nil {
@@ -91,22 +94,27 @@ func main() {
 								log.Print(err)
 							} else {
 								msg.Text = "Class added successfully."
-								_, err = db.SetStageByUserID(update.Message.Chat.ID, "main")
-								if err != nil {
-									msg.Text = "Something went wrong. Please try again later."
-								}
+								success = true
 							}
 						}
 					}
 					_, err := bot.Send(&msg)
 					if err != nil {
 						log.Print(err)
+						success = false
 					}
 					
-					err = handlers.ShowClasses(update.Message.Chat.ID, bot)
-					if err != nil {
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Something went wrong. Please try again later.")
-						bot.Send(&msg)
+					if success {
+						err = handlers.ShowClasses(update.Message.Chat.ID, bot)
+						if err != nil {
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Something went wrong. Please try again later.")
+							bot.Send(&msg)
+						}
+						_, err = db.SetStageByUserID(update.Message.Chat.ID, "main")
+						if err != nil {
+							msg.Text = "Something went wrong. Please try again later."
+							success = false
+						}
 					}
 				}
 			}
@@ -125,9 +133,7 @@ func main() {
 				if !exists {
 					log.Print("User with this id doesn't exist")
 				}
-				cancelKeyboard := tgbotapi.NewInlineKeyboardMarkup(
-					tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to the main menu.")),
-				)
+				cancelKeyboard := handlers.CancelKeyboard
 				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "- Enter the information about the class in this order -\nClass Name\nClass Grade (in numbers)")
 				msg.ReplyMarkup = cancelKeyboard
 				_, err = bot.Send(&msg)

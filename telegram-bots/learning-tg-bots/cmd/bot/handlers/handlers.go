@@ -57,13 +57,13 @@ func ShowClasses(chatID int64, bot *tgbotapi.BotAPI) (error) {
 	if err != nil {
 		return err
 	}
-	
-	msg := tgbotapi.NewMessage(chatID, "- Your classes: \n\n")
+
+	msg := tgbotapi.NewMessage(chatID, "-- Your classes -- \n\n")
 	if len(classes) == 0 {
 		msg.Text += "\t\tYou don't have classes."
 	} else {
 		for i, class := range classes {
-			msg.Text += strconv.Itoa(i+1) + ") " + class.Name + " - " + strconv.Itoa(class.Grade)
+			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + class.Name + " - Grade: " + strconv.Itoa(class.Grade) + " - ID: " + strconv.Itoa(class.ID) + "\n"
 		}
 	}
 	msg.ReplyMarkup = classesKeyboard
@@ -75,3 +75,7 @@ func ShowClasses(chatID int64, bot *tgbotapi.BotAPI) (error) {
 func AddClass(chatID int64, bot *tgbotapi.BotAPI) (error) {
 	return nil
 }
+
+var CancelKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to the main menu.")),
+)

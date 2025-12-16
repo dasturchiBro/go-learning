@@ -4,7 +4,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"context"
 	"os"
-
 	"xlsxbot/models"
 	"xlsxbot/app"
 )
@@ -57,15 +56,15 @@ func GetClassesByUserID(chatID int64) ([]models.Class, error) {
 		return nil, err
 	}
 	classes := make([]models.Class, 0)
-	if !rows.Next() {
-		return classes, nil
-	}
+
 	for rows.Next() {
 		var class models.Class
 		err := rows.Scan(&class.ID, &class.Name, &class.Grade, &class.UserID)
 		if err != nil {
 			return nil, err
 		}
+		classes = append(classes, class)
+
 	}
 	return classes, nil
 }
