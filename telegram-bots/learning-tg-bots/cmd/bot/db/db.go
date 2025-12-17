@@ -75,3 +75,35 @@ func AddClass(chatID int64, className string, grade int) (int, error) {
 	err := app.DB.QueryRow(context.Background(), query, className, grade, chatID).Scan(&id)
 	return id, err
 }
+
+func RemoveClass(chatID int64, classID int) (bool, error) {
+	query := "DELETE FROM classes WHERE user_id = $1 AND id = $2"
+	exec, err := app.DB.Exec(context.Background(), query, chatID, classID)
+	if err != nil {
+		return false, err
+	}
+	if exec.RowsAffected() != 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func GetTemplatesByUserID(chatID int64) ([]models.Template, error) {
+	query := "SELECT * FROM templates WHERE user_id = $1"
+	rows, err := app.DB.Query(context.Background(), query, chatID)
+	if err != nil {
+		return nil, err
+	}
+	templates := make([]models.Template, 0)
+
+	for rows.Next() {
+		var template models.Template
+		err := rows.Scan(&template.ID, &template.Name, &template.ClassID, &template.UserID)
+		if err != nil {
+			return nil, err
+		}
+		templates = append(templates, template)
+
+	}
+	return templates, nil
+}

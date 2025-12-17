@@ -79,3 +79,30 @@ func AddClass(chatID int64, bot *tgbotapi.BotAPI) (error) {
 var CancelKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to the main menu.")),
 )
+
+func ShowTemplates(chatID int64, bot *tgbotapi.BotAPI) error {
+	templatesKeyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Add Template", "Add Template Callback"),
+			tgbotapi.NewInlineKeyboardButtonData("Remove Template", "Remove Template Callback"),
+		),
+	)
+
+	templates, err := db.GetTemplatesByUserID(chatID)
+	if err != nil {
+		return err
+	}
+
+	msg := tgbotapi.NewMessage(chatID, "-- Your templates -- \n\n")
+	if len(templates) == 0 {
+		msg.Text += "\t\tYou don't have templates."
+	} else {
+		for i, template := range templates {
+			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + template.Name + " - ID: " + strconv.Itoa(template.ID) + "\n"
+		}
+	}
+	msg.ReplyMarkup = templatesKeyboard
+
+	_, err = bot.Send(&msg)
+	return err
+}

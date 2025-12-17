@@ -68,11 +68,17 @@ func main() {
 				if update.Message.Text == "🏡 Main Menu" || update.Message.Text == "/start" {
 					db.SetStageByUserID(update.Message.Chat.ID, "main")
 					handlers.GoToMainMenu(update.Message.Chat.ID, bot)
-				} else if update.Message.Text == "📚 Classes" && stage == "main" {
-
+				} else if update.Message.Text == "📚 Classes"{
+					db.SetStageByUserID(update.Message.Chat.ID, "main")
 					err := handlers.ShowClasses(update.Message.Chat.ID, bot)
 					if err != nil {
 						log.Printf("An error occured in Classes Query Method: %v", err)
+					}
+				} else if update.Message.Text == "📐 Templates" {
+					db.SetStageByUserID(update.Message.Chat.ID, "main")
+					err := handlers.ShowTemplates(update.Message.Chat.ID, bot)
+					if err != nil {
+						log.Print(err)
 					}
 				} else if stage == "add_class" {
 					message := update.Message.Text
@@ -113,10 +119,51 @@ func main() {
 						_, err = db.SetStageByUserID(update.Message.Chat.ID, "main")
 						if err != nil {
 							msg.Text = "Something went wrong. Please try again later."
-							success = false
+						}
+					}
+				} else if stage == "remove_class" {
+					// START: REMOVE CLASS STAGE HANDLER
+					message := update.Message.Text 
+					id, err := strconv.Atoi(message)
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "The class was successfully removed.")
+					success := true
+					if err != nil {
+						success = false
+						msg.Text = "ID must be an integer. Please try again."
+						msg.ReplyMarkup = handlers.CancelKeyboard
+					}
+					r_success, err := db.RemoveClass(update.Message.Chat.ID, id)
+					if err != nil {
+						success = false
+						msg.Text = "Something went wrong. Please try again."
+						msg.ReplyMarkup = handlers.CancelKeyboard
+					} else if r_success == false {
+						success = false
+						msg.Text = "Class with this ID doesn't exist. Please try to enter a valid ID."
+						msg.ReplyMarkup = handlers.CancelKeyboard
+					} 
+
+					_, err = bot.Send(&msg)
+					if err != nil {
+						log.Printf("An error occured while sending the message: %v ", err)
+					}
+					if success {
+						err := handlers.ShowClasses(update.Message.Chat.ID, bot)
+						if err != nil {
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occured in the system.")
+							bot.Send(&msg)
+							log.Printf("An error occured while sending classes: %v", err)
+						}
+						_, err = db.SetStageByUserID(update.Message.Chat.ID, "main")
+						if err != nil {
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occured in the system.")
+							bot.Send(&msg)
+							log.Printf("An error occured while setting the stage to main: %v", err)
 						}
 					}
 				}
+				// END: REMOVE CLASS STAGE HANDLER
+
 			}
 		} else if update.CallbackQuery != nil {
 			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data)
@@ -141,7 +188,22 @@ func main() {
 					log.Print(err)
 				}
 			} else if update.CallbackQuery.Data == "Remove Class Callback" {
-				// Write a handlers function to remove a class with its students.
+				exists, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "remove_class")
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Enter the ID of the class you want to remove:")
+				if err != nil {
+					log.Print(err)
+					msg.Text = "Something went wrong. Please try again later."
+					msg.ReplyMarkup = handlers.CancelKeyboard
+				}
+				if !exists {
+					log.Printf("User with ID %v doesn't exist", update.CallbackQuery.From.ID)
+					msg.Text = "You are not registered to this bot. Please enter /start to register to the bot."
+				}
+				msg.ReplyMarkup = handlers.CancelKeyboard
+				_, err = bot.Send(&msg)
+				if err != nil {
+					log.Printf("An error occured while sending the message: %v", err)
+				}
 			} else if update.CallbackQuery.Data == "Return to the main menu." {
 				err := handlers.GoToMainMenu(update.CallbackQuery.From.ID, bot)
 				if err != nil {
