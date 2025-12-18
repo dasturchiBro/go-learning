@@ -209,6 +209,11 @@ func main() {
 				if err != nil {
 					log.Print(err)
 				}
+				
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
 			}
 		}
 	}

@@ -46,12 +46,13 @@ func RegisterUser(chatID int64, bot *tgbotapi.BotAPI) (error, error) {
 
 func ShowClasses(chatID int64, bot *tgbotapi.BotAPI) (error) {
 
-	classesKeyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
+	classesKeyboard_main := tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Add Class", "Add Class Callback"),
 			tgbotapi.NewInlineKeyboardButtonData("Remove Class", "Remove Class Callback"),
-		),
-	)
+		)
+
+	var classesKeyboard [][]tgbotapi.InlineKeyboardButton
+	classesKeyboard = append(classesKeyboard, classesKeyboard_main)
 	
 	classes, err := db.GetClassesByUserID(chatID)
 	if err != nil {
@@ -63,10 +64,15 @@ func ShowClasses(chatID int64, bot *tgbotapi.BotAPI) (error) {
 		msg.Text += "\t\tYou don't have classes."
 	} else {
 		for i, class := range classes {
-			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + class.Name + " - Grade: " + strconv.Itoa(class.Grade) + " - ID: " + strconv.Itoa(class.ID) + "\n"
+			grade := strconv.Itoa(class.Grade)
+			classid := strconv.Itoa(class.ID)
+			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + class.Name + " - Grade: " + grade + " - ID: " + classid + "\n"
+			button := tgbotapi.NewInlineKeyboardButtonData("Manage " + class.Name + " - ID: " + classid, "Manage class with ID " + classid)
+			row := tgbotapi.NewInlineKeyboardRow(button)
+			classesKeyboard = append(classesKeyboard, row)
 		}
 	}
-	msg.ReplyMarkup = classesKeyboard
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(classesKeyboard...)
 
 	_, err = bot.Send(&msg)
 	return err
@@ -104,5 +110,12 @@ func ShowTemplates(chatID int64, bot *tgbotapi.BotAPI) error {
 	msg.ReplyMarkup = templatesKeyboard
 
 	_, err = bot.Send(&msg)
+	return err
+}
+
+
+func DeleteMessage(chatID int64, messageID int, bot *tgbotapi.BotAPI) error {
+	deleteConfig := tgbotapi.NewDeleteMessage(chatID, messageID)
+	_, err := bot.Request(deleteConfig)
 	return err
 }
