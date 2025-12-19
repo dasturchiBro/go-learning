@@ -78,13 +78,34 @@ func ShowClasses(chatID int64, bot *tgbotapi.BotAPI) (error) {
 	return err
 }
 
+func ShowClass(chatID int64, bot *tgbotapi.BotAPI, id int) (error) {
+	classesKeyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Add Students", "Add Students to class " + strconv.Itoa(id)),
+			tgbotapi.NewInlineKeyboardButtonData("Remove Students", "Remove Students from class " + strconv.Itoa(id)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to classes."),
+		),
+	)
+	class, err := db.GetClassByUserID(chatID, id)
+	if err != nil {
+		return err
+	}
+	msg := tgbotapi.NewMessage(chatID, "-- Your class -- \n\n")
+	grade := strconv.Itoa(class.Grade)
+	classid := strconv.Itoa(class.ID)
+	msg.Text += "\t\t" + "Name: " + class.Name + "\n\t\tGrade: " + grade + "\n\t\tID: " + classid + "\n"
+	msg.ReplyMarkup =  classesKeyboard
+
+	_, err = bot.Send(&msg)
+	return err
+}
+
 func AddClass(chatID int64, bot *tgbotapi.BotAPI) (error) {
 	return nil
 }
 
-var CancelKeyboard = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to the main menu.")),
-)
 
 func ShowTemplates(chatID int64, bot *tgbotapi.BotAPI) error {
 	templatesKeyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -119,3 +140,12 @@ func DeleteMessage(chatID int64, messageID int, bot *tgbotapi.BotAPI) error {
 	_, err := bot.Request(deleteConfig)
 	return err
 }
+
+
+var CancelKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to the main menu.")),
+)
+
+var ReturnToClassesKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to classes.")),
+)

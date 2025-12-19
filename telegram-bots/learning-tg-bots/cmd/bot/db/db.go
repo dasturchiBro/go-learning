@@ -6,6 +6,8 @@ import (
 	"os"
 	"xlsxbot/models"
 	"xlsxbot/app"
+	"errors"
+	"strconv"
 )
 
 func Connect() (*pgxpool.Pool, error) {
@@ -106,4 +108,22 @@ func GetTemplatesByUserID(chatID int64) ([]models.Template, error) {
 
 	}
 	return templates, nil
+}
+
+func GetClassByUserID(chatID int64, id int) (models.Class, error) {
+	query := "SELECT * FROM classes WHERE user_id = $1 AND id = $2"
+	var class models.Class
+	rows, err := app.DB.Query(context.Background(), query, chatID, id)
+	if err != nil {
+		return class, err
+	}
+	if rows.Next() {
+		err := rows.Scan(&class.ID, &class.Name, &class.Grade, &class.UserID)
+		if err != nil {
+			return class, err
+		}
+	} else {
+		return class, errors.New("Class with ID" + strconv.Itoa(id) + "doesn't exist")
+	}
+	return class, nil
 }

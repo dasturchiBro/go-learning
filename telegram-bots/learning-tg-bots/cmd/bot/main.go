@@ -173,6 +173,10 @@ func main() {
 			}
 
 			if update.CallbackQuery.Data == "Add Class Callback" {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
 				exists, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "add_class")
 				if err != nil {
 					log.Print(err)
@@ -180,7 +184,7 @@ func main() {
 				if !exists {
 					log.Print("User with this id doesn't exist")
 				}
-				cancelKeyboard := handlers.CancelKeyboard
+				cancelKeyboard := handlers.ReturnToClassesKeyboard
 				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "- Enter the information about the class in this order -\nClass Name\nClass Grade (in numbers)")
 				msg.ReplyMarkup = cancelKeyboard
 				_, err = bot.Send(&msg)
@@ -188,6 +192,10 @@ func main() {
 					log.Print(err)
 				}
 			} else if update.CallbackQuery.Data == "Remove Class Callback" {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
 				exists, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "remove_class")
 				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Enter the ID of the class you want to remove:")
 				if err != nil {
@@ -199,7 +207,7 @@ func main() {
 					log.Printf("User with ID %v doesn't exist", update.CallbackQuery.From.ID)
 					msg.Text = "You are not registered to this bot. Please enter /start to register to the bot."
 				}
-				msg.ReplyMarkup = handlers.CancelKeyboard
+				msg.ReplyMarkup = handlers.ReturnToClassesKeyboard
 				_, err = bot.Send(&msg)
 				if err != nil {
 					log.Printf("An error occured while sending the message: %v", err)
@@ -213,6 +221,29 @@ func main() {
 				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
 				if err != nil {
 					log.Printf("An error occured while deleting a message: %v", err)
+				}
+			} else if update.CallbackQuery.Data == "Return to classes." {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				db.SetStageByUserID(update.CallbackQuery.From.ID, "main")
+				err := handlers.ShowClasses(update.CallbackQuery.From.ID, bot)
+				if err != nil {
+					log.Printf("An error occured in Classes Query Method: %v", err)
+				}
+				
+			} else if strings.Contains(update.CallbackQuery.Data, "Manage class with ID ") {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts) - 1]
+				classID, _ := strconv.Atoi(id)
+				err := handlers.ShowClass(update.CallbackQuery.From.ID, bot, classID)
+				if err != nil {
+					log.Printf("An error occured in Classes Query Method: %v", err)
 				}
 			}
 		}
