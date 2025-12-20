@@ -85,6 +85,9 @@ func ShowClass(chatID int64, bot *tgbotapi.BotAPI, id int) (error) {
 			tgbotapi.NewInlineKeyboardButtonData("Remove Students", "Remove Students from class " + strconv.Itoa(id)),
 		),
 		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Delete Class", "Delete Class " + strconv.Itoa(id)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to classes."),
 		),
 	)
@@ -95,7 +98,18 @@ func ShowClass(chatID int64, bot *tgbotapi.BotAPI, id int) (error) {
 	msg := tgbotapi.NewMessage(chatID, "-- Your class -- \n\n")
 	grade := strconv.Itoa(class.Grade)
 	classid := strconv.Itoa(class.ID)
-	msg.Text += "\t\t" + "Name: " + class.Name + "\n\t\tGrade: " + grade + "\n\t\tID: " + classid + "\n"
+	students, err := db.GetStudentsByClassID(class.ID, chatID)
+	if err != nil {
+		return err
+	}
+	studentsShow := ""
+	if len(students) != 0 {
+		studentsShow += "\n\n-- Students --\n"
+		for i, student := range students {
+			studentsShow += "\t\t(" + strconv.Itoa(i+1) + ") " + student.Name + "\n"
+		}
+	}
+	msg.Text += "\t\t" + "Name: " + class.Name + "\n\t\tGrade: " + grade + "\n\t\tID: " + classid + "\n\t\tNumber of students in the class: " + strconv.Itoa(len(students)) + studentsShow
 	msg.ReplyMarkup =  classesKeyboard
 
 	_, err = bot.Send(&msg)

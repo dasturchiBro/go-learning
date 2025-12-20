@@ -127,3 +127,42 @@ func GetClassByUserID(chatID int64, id int) (models.Class, error) {
 	}
 	return class, nil
 }
+
+func AddStudentToUser(student models.Student) (int, error) {
+	query := "INSERT INTO students (name, class_id, user_id) VALUES ($1, $2, $3) RETURNING id"
+	var id int
+	err := app.DB.QueryRow(context.Background(), query, student.Name, student.ClassID, student.UserID).Scan(&id)
+	return id, err
+}
+
+func GetStudentsByClassID(classID int, userID int64) ([]models.Student, error) {
+	query := "SELECT id, name, points, template_id FROM students WHERE class_id = $1 AND user_id = $2"
+	rows, err := app.DB.Query(context.Background(), query, classID, userID)
+	if err != nil {
+		return nil, err
+	}
+	var students []models.Student 
+	for rows.Next() {
+		var student models.Student 
+		err := rows.Scan(&student.ID, &student.Name, &student.Points, &student.TemplateID)
+		if err != nil {
+			return nil, err
+		}
+		student.ClassID = classID
+		student.UserID = userID
+		students = append(students, student)
+	}
+	return students, nil
+}
+
+func RemoveStudentByClassID(chatID int64, classID int, studentID int) (bool, error) {
+	query := "DELETE FROM students WHERE user_id = $1 AND class_id = $2 AND id = $3"
+	exec, err := app.DB.Exec(context.Background(), query, chatID, classID, studentID)
+	if err != nil {
+		return false, err
+	}
+	if exec.RowsAffected() != 0 {
+		return true, nil
+	}
+	return false, nil
+}

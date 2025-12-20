@@ -6,6 +6,7 @@ import (
 	"xlsxbot/db"
 	"xlsxbot/app"
 	"xlsxbot/handlers"
+	"xlsxbot/models"
 	"strings"
 	"strconv"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -161,8 +162,85 @@ func main() {
 							log.Printf("An error occured while setting the stage to main: %v", err)
 						}
 					}
-				}
-				// END: REMOVE CLASS STAGE HANDLER
+				} /* END: REMOVE CLASS STAGE HANDLER */ else if strings.Contains(stage, "add students to class ") {
+
+				 // ****START ADD STUDENTS STAGE HANDLER**** //
+					parts := strings.Fields(stage)
+					id, _ := strconv.Atoi(parts[len(parts) - 1])
+					message := update.Message.Text
+					students := strings.Split(message, "\n")
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Student(s) added successfully!")
+					for _, student := range students {
+						var newStudent models.Student
+						newStudent.Name = student
+						newStudent.ClassID = id
+						newStudent.UserID = update.Message.Chat.ID
+						_, err := db.AddStudentToUser(newStudent)
+						if err != nil {
+							log.Printf("An error occured while adding student: %v", err)
+							msg.Text = "Something went wrong. Please try again later."
+						}
+					}
+					_, err := bot.Send(&msg)
+					if err != nil {
+						log.Printf("An error occured while sending a message: %v", err)
+					}
+					
+					if _, err := db.SetStageByUserID(update.Message.Chat.ID, "main"); err != nil {
+						log.Print(err)
+					}
+					
+					if err := handlers.ShowClass(update.Message.Chat.ID, bot, id); err != nil {
+						log.Printf("An error occured in Classes Query Method: %v", err)
+					}
+				
+				}/* ****END ADD STUDENTS STAGE HANDLER***** */ else if strings.Contains(stage, "remove students from class ") {
+
+				 // ****START REMOVE STUDENT STAGE HANDLER**** //
+
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Student removed successfully!")
+					parts := strings.Fields(stage)
+					classID, _ := strconv.Atoi(parts[len(parts) - 1])
+					number, err := strconv.Atoi(update.Message.Text)
+					if err != nil {
+						msg.Text = "The student's number should be an integer. Please try again."
+					}
+					students, err := db.GetStudentsByClassID(classID, update.Message.Chat.ID)
+					if err != nil {
+						msg.Text = "Something went wrong. Please try again later."
+					}
+					if number > 0 && number <= len(students) {
+						student := students[number - 1]
+						ok, err := db.RemoveStudentByClassID(update.Message.Chat.ID, classID, student.ID)
+						if err != nil {
+							log.Print(err)
+							msg.Text = "Something went wrong. Please try again later."
+						}
+						if !ok {
+							msg.Text = "An error occured: Student removal wasn't successful. "
+						}
+					} else {
+						msg.Text = "Student on this number doesn't exist."
+					}
+					_, err = bot.Send(&msg)
+					if err != nil {
+						log.Printf("An error occured while sending a message: %v", err)
+					}
+					
+					if _, err := db.SetStageByUserID(update.Message.Chat.ID, "main"); err != nil {
+						log.Print(err)
+					}
+					
+					if err := handlers.ShowClass(update.Message.Chat.ID, bot, classID); err != nil {
+						log.Printf("An error occured in Classes Query Method: %v", err)
+					}
+				
+				}// ****END REMOVE STUDENT STAGE HANDLER***** // 
+
+
+				
+
+				
 
 			}
 		} else if update.CallbackQuery != nil {
@@ -243,7 +321,89 @@ func main() {
 				classID, _ := strconv.Atoi(id)
 				err := handlers.ShowClass(update.CallbackQuery.From.ID, bot, classID)
 				if err != nil {
-					log.Printf("An error occured in Classes Query Method: %v", err)
+					log.Printf("An error occured in Class Query Method: %v", err)
+				}
+			} else if strings.Contains(update.CallbackQuery.Data, "Add Students to class ") {
+				err := handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts)-1]
+				// classID, _ := strconv.Atoi(id)
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Enter each student’s name on a new line:")
+				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage class with ID " + id),
+					),
+				)
+				_, err = db.SetStageByUserID(update.CallbackQuery.From.ID, "add students to class " + id)
+				if err != nil {
+					log.Printf("Something went from while setting the stage: %v", err)
+				}
+				if _, err := bot.Send(&msg); err != nil {
+					log.Printf("Something went wrong while sending message: %v", err)
+				}
+			} else if strings.Contains(update.CallbackQuery.Data, "Remove Students from class ") {
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts)-1]
+				// classID, _ := strconv.Atoi(id)
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Enter the student’s number you want to delete:")
+				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage class with ID " + id),
+					),
+				)
+				_, err = db.SetStageByUserID(update.CallbackQuery.From.ID, "remove students from class " + id)
+				if err != nil {
+					log.Printf("Something went from while setting the stage: %v", err)
+				}
+				if _, err := bot.Send(&msg); err != nil {
+					log.Printf("Something went wrong while sending message: %v", err)
+				}
+			} else if strings.Contains(update.CallbackQuery.Data, "Delete Class ") {
+				err := handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts)-1]
+				classID, _ := strconv.Atoi(id)
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "The class was successfully removed.")
+				success := true
+				r_success, err := db.RemoveClass(update.CallbackQuery.From.ID, classID)
+				if err != nil {
+					success = false
+					msg.Text = "Something went wrong. Please try again."
+
+				} else if r_success == false {
+					success = false
+					msg.Text = "Class with this ID doesn't exist. Please try to enter a valid ID."
+				} 
+
+				_, err = bot.Send(&msg)
+				if success == false {
+					err := handlers.ShowClass(update.CallbackQuery.From.ID, bot, classID)
+					if err != nil {
+						log.Printf("An error occured in Class Query Method: %v", err)
+					}
+				}
+				if err != nil {
+					log.Printf("An error occured while sending the message: %v ", err)
+				}
+				if success {
+					err := handlers.ShowClasses(update.CallbackQuery.From.ID, bot)
+					if err != nil {
+						msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "An error occured in the system.")
+						bot.Send(&msg)
+						log.Printf("An error occured while sending classes: %v", err)
+					}
+					_, err = db.SetStageByUserID(update.CallbackQuery.From.ID, "main")
+					if err != nil {
+						msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "An error occured in the system.")
+						bot.Send(&msg)
+						log.Printf("An error occured while setting the stage to main: %v", err)
+					}
 				}
 			}
 		}

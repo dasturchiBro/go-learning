@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+	"encoding/json"
 )
 
 type User struct {
@@ -15,9 +16,10 @@ type Student struct {
 	ID int
 	Name string
 	ClassID int 
-	Points string 
+	Points json.RawMessage 
 	CreatedAt time.Time
 	TemplateID int
+	UserID int64
 }
 
 type Class struct {
