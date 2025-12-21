@@ -91,7 +91,7 @@ func RemoveClass(chatID int64, classID int) (bool, error) {
 }
 
 func GetTemplatesByUserID(chatID int64) ([]models.Template, error) {
-	query := "SELECT * FROM templates WHERE user_id = $1"
+	query := "SELECT id, name, class_id, user_id, header, criteria FROM templates WHERE user_id = $1"
 	rows, err := app.DB.Query(context.Background(), query, chatID)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func GetTemplatesByUserID(chatID int64) ([]models.Template, error) {
 
 	for rows.Next() {
 		var template models.Template
-		err := rows.Scan(&template.ID, &template.Name, &template.ClassID, &template.UserID)
+		err := rows.Scan(&template.ID, &template.Name, &template.ClassID, &template.UserID, &template.Header, &template.Criteria)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +108,24 @@ func GetTemplatesByUserID(chatID int64) ([]models.Template, error) {
 
 	}
 	return templates, nil
+}
+
+func GetTemplateByUserID(chatID int64, id int) (models.Template, error) {
+	query := "SELECT id, name, header, user_id, criteria, class_id FROM templates WHERE user_id = $1 AND id = $2"
+	var template models.Template
+	rows, err := app.DB.Query(context.Background(), query, chatID, id)
+	if err != nil {
+		return template, err
+	}
+	if rows.Next() {
+		err := rows.Scan(&template.ID, &template.Name, &template.Header, &template.UserID, &template.Criteria, &template.ClassID)
+		if err != nil {
+			return template, err
+		}
+	} else {
+		return template, errors.New("template with ID" + strconv.Itoa(id) + "doesn't exist")
+	}
+	return template, nil
 }
 
 func GetClassByUserID(chatID int64, id int) (models.Class, error) {
@@ -165,4 +183,22 @@ func RemoveStudentByClassID(chatID int64, classID int, studentID int) (bool, err
 		return true, nil
 	}
 	return false, nil
+}
+
+func AddTemplateStageFirst(template models.Template) (int, error) {
+	query := "INSERT INTO templates (name, user_id, header) VALUES ($1, $2, $3) RETURNING id"
+	var id int
+	err := app.DB.QueryRow(context.Background(), query, template.Name, template.UserID, template.Header).Scan(&id)
+	return id, err
+}
+
+
+func AddTemplateStageSecond(template models.Template) (string, error) {
+	query := "UPDATE templates SET criteria = $1 WHERE user_id = $2 AND id = $3 RETURNING name"
+	var name string
+	err := app.DB.QueryRow(context.Background(), query, template.Criteria, template.UserID, template.ID).Scan(&name)
+	if err != nil {
+		return name, err
+	}
+	return name, nil
 }

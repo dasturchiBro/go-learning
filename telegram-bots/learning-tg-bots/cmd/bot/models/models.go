@@ -34,4 +34,6 @@ type Template struct {
 	Name string
 	ClassID int
 	UserID int64 
+	Header []string
+	Criteria json.RawMessage 
 }

@@ -4,6 +4,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"xlsxbot/db"
 	"strconv"
+	"encoding/json"
 )
 
 func SendPhoneNumberButton(chatID int64, bot *tgbotapi.BotAPI) error {
@@ -116,18 +117,15 @@ func ShowClass(chatID int64, bot *tgbotapi.BotAPI, id int) (error) {
 	return err
 }
 
-func AddClass(chatID int64, bot *tgbotapi.BotAPI) (error) {
-	return nil
-}
 
 
 func ShowTemplates(chatID int64, bot *tgbotapi.BotAPI) error {
-	templatesKeyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Add Template", "Add Template Callback"),
-			tgbotapi.NewInlineKeyboardButtonData("Remove Template", "Remove Template Callback"),
-		),
-	)
+	templatesKeyboard_main := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Add Template", "Add Template Callback"),
+			tgbotapi.NewInlineKeyboardButtonData("Remove Template", "Remove Template Callback"),)
+	var templatesKeyboard [][]tgbotapi.InlineKeyboardButton
+	templatesKeyboard = append(templatesKeyboard, templatesKeyboard_main)
+	
+
 
 	templates, err := db.GetTemplatesByUserID(chatID)
 	if err != nil {
@@ -140,9 +138,46 @@ func ShowTemplates(chatID int64, bot *tgbotapi.BotAPI) error {
 	} else {
 		for i, template := range templates {
 			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + template.Name + " - ID: " + strconv.Itoa(template.ID) + "\n"
+			button := tgbotapi.NewInlineKeyboardButtonData("Manage " + template.Name + " - ID: " + strconv.Itoa(template.ID), "Manage template with ID " + strconv.Itoa(template.ID))
+			row := tgbotapi.NewInlineKeyboardRow(button)
+			templatesKeyboard = append(templatesKeyboard, row)
 		}
 	}
-	msg.ReplyMarkup = templatesKeyboard
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(templatesKeyboard...)
+
+	_, err = bot.Send(&msg)
+	return err
+}
+
+func ShowTemplate(chatID int64, bot *tgbotapi.BotAPI, id int) (error) {
+	templatesKeyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Use Template", "Use template " + strconv.Itoa(id)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Delete Template", "Delete Template " + strconv.Itoa(id)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to templates."),
+		),
+	)
+	template, err := db.GetTemplateByUserID(chatID, id)
+	if err != nil {
+		return err
+	}
+	msg := tgbotapi.NewMessage(chatID, "-- Your template -- \n\n")
+	templateid := strconv.Itoa(template.ID)
+	var criteria []string
+	err = json.Unmarshal(template.Criteria, &criteria)
+	if err != nil {
+		return err
+	}
+	criteriaShow := "\n\tCriteria:\n"
+	for _, c := range criteria {
+		criteriaShow += "\t\t" + c + "\n"
+	}
+	msg.Text += "\t" + "Name: " + template.Name + "\n\tGrade: " + template.Header[0] + "\n\tQuarter: " + template.Header[1] + "\n\tExam Type: " + template.Header[2] + "\n\tID: " + templateid + criteriaShow
+	msg.ReplyMarkup =  templatesKeyboard
 
 	_, err = bot.Send(&msg)
 	return err
@@ -162,4 +197,8 @@ var CancelKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 
 var ReturnToClassesKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to classes.")),
+)
+
+var ReturnToTemplatesKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to templates.")),
 )

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"strconv"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"encoding/json"
 )
 
 
@@ -80,6 +81,8 @@ func main() {
 					err := handlers.ShowTemplates(update.Message.Chat.ID, bot)
 					if err != nil {
 						log.Print(err)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Something went wrong. Please try again later. ")
+						bot.Send(&msg)
 					}
 				} else if stage == "add_class" {
 					message := update.Message.Text
@@ -88,12 +91,12 @@ func main() {
 					success := false
 					if len(parts) != 2 {
 						msg.Text = "Please enter the class information in the correct order: \n\t\tClass Name (e.g 11.01-E1)\n\t\tGrade in numbers (e.g. 11)"
-						msg.ReplyMarkup = handlers.CancelKeyboard
+						msg.ReplyMarkup = handlers.ReturnToClassesKeyboard
 					} else {
 						num, err := strconv.Atoi(parts[1])
 						if err != nil {
 							msg.Text = "Grade should be a number: \n\t\tClass Name (e.g 11.01-E1)\n\t\tGrade (e.g. 11)\nTry again"
-							msg.ReplyMarkup = handlers.CancelKeyboard
+							msg.ReplyMarkup = handlers.ReturnToClassesKeyboard
 						} else {
 							_, err := db.AddClass(update.Message.Chat.ID, parts[0], num)
 							if err != nil {
@@ -137,11 +140,11 @@ func main() {
 					if err != nil {
 						success = false
 						msg.Text = "Something went wrong. Please try again."
-						msg.ReplyMarkup = handlers.CancelKeyboard
+						msg.ReplyMarkup = handlers.ReturnToClassesKeyboard
 					} else if r_success == false {
 						success = false
 						msg.Text = "Class with this ID doesn't exist. Please try to enter a valid ID."
-						msg.ReplyMarkup = handlers.CancelKeyboard
+						msg.ReplyMarkup = handlers.ReturnToClassesKeyboard
 					} 
 
 					_, err = bot.Send(&msg)
@@ -235,12 +238,108 @@ func main() {
 						log.Printf("An error occured in Classes Query Method: %v", err)
 					}
 				
-				}// ****END REMOVE STUDENT STAGE HANDLER***** // 
-
-
-				
-
-				
+				}/* ***END REMOVE STUDENT STAGE HANDLER*** */ else if stage == "add_template" { /* START ADD TEMPLATE */
+					message := update.Message.Text
+					parts := strings.Split(strings.TrimSpace(message), "\n")
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+					success := false
+					var templateID int
+					if len(parts) != 4 {
+						msg.Text = "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1-chorak, 4-chorak)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)"
+						msg.ReplyMarkup = handlers.ReturnToTemplatesKeyboard
+					} else {
+						_, err := strconv.Atoi(parts[1])
+						if err != nil {
+							msg.Text = "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1-chorak, 4-chorak)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)"
+							msg.ReplyMarkup = handlers.ReturnToTemplatesKeyboard
+						} else {
+							var newTemplate models.Template
+							newTemplate.Name = parts[0]
+							newTemplate.UserID = update.Message.Chat.ID 
+							newTemplate.Header = []string{parts[1], parts[2], parts[3]}
+							id, err := db.AddTemplateStageFirst(newTemplate)
+							templateID = id
+							if err != nil {
+								msg.Text = "An error has occured. " + err.Error()
+								msg.ReplyMarkup = handlers.ReturnToTemplatesKeyboard
+								log.Print(err)
+							} else {
+								msg.Text = "Enter the criteria in the following format, one per line:\n\t<Criteria name> <Points>\n\tFor example:\n\tWriting 10\n\tSpeaking 10\n\tGrammar 5"
+								success = true
+							}
+						}
+					}
+					_, err := bot.Send(&msg)
+					if err != nil {
+						log.Print(err)
+						success = false
+					}
+					
+					if success {
+						_, err = db.SetStageByUserID(update.Message.Chat.ID, "addTemplateCriteria_" + strconv.Itoa(templateID))
+						if err != nil {
+							log.Print(err)
+						}
+					}
+				} else if strings.Contains(stage, "addTemplateCriteria_") { 
+					message := update.Message.Text
+					parts := strings.Split(strings.TrimSpace(message), "\n")
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+					templateID := strings.Split(stage, "_")[1]
+					success, isOkay := false, true
+					criteriaArr := make([]string, 0)
+					for _, c := range parts {
+						criterion := strings.Split(strings.TrimSpace(c), " ")
+						if len(criterion) != 2 {
+							isOkay = false
+							break
+						} else {
+							_, err := strconv.Atoi(criterion[1])
+							if err != nil {
+								isOkay = false
+								break
+							}
+						}
+						criteriaArr = append(criteriaArr, c)
+					}
+					ReturnToTemplatesKeyboardByDeleting := tgbotapi.NewInlineKeyboardMarkup(
+						tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to templates by deleteing ID: " + templateID)),
+					)
+					if !isOkay {
+						msg.Text = "Enter the criteria in the following format, one per line:\n\t<Criteria name> <Points>\n\tFor example:\n\tWriting 10\n\tSpeaking 10\n\tGrammar 5"
+						msg.ReplyMarkup = ReturnToTemplatesKeyboardByDeleting
+					} else {
+						var template models.Template
+						template.ID, _ = strconv.Atoi(templateID)
+						template.UserID = update.Message.Chat.ID
+						var err_json error
+						template.Criteria, err_json = json.Marshal(criteriaArr)
+						_, err := db.AddTemplateStageSecond(template)
+						if err != nil && err_json != nil {
+							msg.Text = "An error has occured."
+							log.Print(err)
+						} else {
+							msg.Text = "Template Added Successfuly!"
+							success = true
+						}
+					}
+					_, err := bot.Send(&msg)
+					if err != nil {
+						log.Print(err)
+						success = false
+					}
+					
+					if success {
+						_, err = db.SetStageByUserID(update.Message.Chat.ID, "main")
+						if err != nil {
+							log.Print(err)
+						}
+						err := handlers.ShowTemplates(update.Message.Chat.ID, bot)
+						if err != nil {
+							log.Printf("An error occured in Templates Query Method: %v", err)
+						}
+					}
+				}
 
 			}
 		} else if update.CallbackQuery != nil {
@@ -404,6 +503,50 @@ func main() {
 						bot.Send(&msg)
 						log.Printf("An error occured while setting the stage to main: %v", err)
 					}
+				}
+			} /* START ADDING A TEMPLATE */ else if update.CallbackQuery.Data == "Add Template Callback" {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				exists, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "add_template")
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1-chorak, 4-chorak)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)")
+				if err != nil {
+					log.Print(err)
+					msg.Text = "Something went wrong. Please try again later."
+					msg.ReplyMarkup = handlers.CancelKeyboard
+				}
+				if !exists {
+					log.Printf("User with ID %v doesn't exist", update.CallbackQuery.From.ID)
+					msg.Text = "You are not registered to this bot. Please enter /start to register to the bot."
+				}
+				msg.ReplyMarkup = handlers.ReturnToTemplatesKeyboard
+				_, err = bot.Send(&msg)
+				if err != nil {
+					log.Printf("An error occured while sending the message: %v", err)
+				}				
+			} /* END ADDING A TEMPLATE */ else if update.CallbackQuery.Data == "Return to templates." {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				db.SetStageByUserID(update.CallbackQuery.From.ID, "main")
+				err := handlers.ShowTemplates(update.CallbackQuery.From.ID, bot)
+				if err != nil {
+					log.Printf("An error occured in Templates Query Method: %v", err)
+				}
+				
+			} else if strings.Contains(update.CallbackQuery.Data, "Manage template with ID ") {
+				err = handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("An error occured while deleting a message: %v", err)
+				}
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts) - 1]
+				classID, _ := strconv.Atoi(id)
+				err := handlers.ShowTemplate(update.CallbackQuery.From.ID, bot, classID)
+				if err != nil {
+					log.Printf("An error occured in Class Query Method: %v", err)
 				}
 			}
 		}
