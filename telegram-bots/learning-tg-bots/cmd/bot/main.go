@@ -548,6 +548,67 @@ func main() {
 				if err != nil {
 					log.Printf("An error occured in Class Query Method: %v", err)
 				}
+				_, err = db.SetStageByUserID(update.CallbackQuery.From.ID, "main")
+				if err != nil {
+					log.Print(err)
+				}
+			} else if strings.Contains(update.CallbackQuery.Data, "Delete Template ") {
+				err := handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("Something went wrong. Couldn't delete a message %v", err)
+				}
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts)-1]
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Do you want to delete the template with ID " + id + "?")
+				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("Yes", "Delete template with ID " + id),
+						tgbotapi.NewInlineKeyboardButtonData("No", "Manage template with ID " + id),
+					),
+				)
+				_, err = db.SetStageByUserID(update.CallbackQuery.From.ID, "delete template")
+				if err != nil {
+					msg.Text = "Something went wrong."
+					log.Print(err)
+					msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Manage template with ID " + id)))
+				}
+				_, err = bot.Send(&msg)
+				if err != nil {
+					log.Print(err)
+				}
+			} else if stage, _ := db.GetStageByUserID(update.CallbackQuery.From.ID); strings.Contains(update.CallbackQuery.Data, "Delete template with ID ") && stage == "delete template" {
+				err := handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if err != nil {
+					log.Printf("Something went wrong. Couldn't delete a message %v", err)
+				}
+				parts := strings.Fields(update.CallbackQuery.Data)
+				id := parts[len(parts)-1]
+				templateID, _ := strconv.Atoi(id)
+				exists, err := db.DeleteTemplate(templateID, update.CallbackQuery.From.ID)
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Template deleted successfully!")
+				success := false
+				if err != nil {
+					msg.Text = "Something went wrong. Please try again later."
+					log.Print(err)
+				} else if !exists {
+					msg.Text = "Template doesn't exist."
+				} else {
+					success = true
+				}
+				_, err = bot.Send(&msg)
+				if err != nil {
+					log.Print(err)
+				}
+				if success {
+					err := handlers.ShowTemplates(update.CallbackQuery.From.ID, bot)
+					if err != nil {
+						log.Printf("An error occured in Templates Query Method: %v", err)
+					}
+				}
+				_, err = db.SetStageByUserID(update.CallbackQuery.From.ID, "delete template")
+				if err != nil {
+					log.Print(err)
+				}
 			}
 		}
 	}

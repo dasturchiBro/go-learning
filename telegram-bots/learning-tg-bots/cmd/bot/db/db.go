@@ -202,3 +202,15 @@ func AddTemplateStageSecond(template models.Template) (string, error) {
 	}
 	return name, nil
 }
+
+func DeleteTemplate(templateID int, userID int64) (bool, error) {
+	query := "DELETE FROM templates WHERE user_id = $1 AND id = $2"
+	exec, err := app.DB.Exec(context.Background(), query, userID, templateID)
+	if err != nil {
+		return false, err
+	}
+	if exec.RowsAffected() != 0 {
+		return true, nil
+	}
+	return false, nil
+}
