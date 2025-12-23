@@ -339,7 +339,10 @@ func main() {
 							log.Printf("An error occured in Templates Query Method: %v", err)
 						}
 					}
+				} else if strings.Contains(stage, "Template_Usage_Enter_Class_ID") {
+					// There should be handlers to handle class entrance.
 				}
+
 
 			}
 		} else if update.CallbackQuery != nil {
@@ -609,7 +612,22 @@ func main() {
 				if err != nil {
 					log.Print(err)
 				}
-			}
+			} else if strings.Contains(update.CallbackQuery.Data, "Use template ") {
+				errDel := handlers.DeleteMessage(update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, bot)
+				if errDel != nil {
+					log.Printf("Something went wrong. Couldn't delete a message %v", errDel)
+				}
+				err := handlers.UseTemplate(update, bot)
+				if err != nil {
+					log.Print(err)
+					msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "Something went wrong. Please try again later.")
+					_, err := bot.Send(&msg)
+					if err != nil {
+						log.Printf("An error occured while sending a message: %v", err)
+					}
+					db.SetStageByUserID(update.CallbackQuery.From.ID, "main")
+				}
+			} 
 		}
 	}
 }

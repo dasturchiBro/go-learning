@@ -5,6 +5,7 @@ import (
 	"xlsxbot/db"
 	"strconv"
 	"encoding/json"
+	"strings"
 )
 
 func SendPhoneNumberButton(chatID int64, bot *tgbotapi.BotAPI) error {
@@ -120,8 +121,7 @@ func ShowClass(chatID int64, bot *tgbotapi.BotAPI, id int) (error) {
 
 
 func ShowTemplates(chatID int64, bot *tgbotapi.BotAPI) error {
-	templatesKeyboard_main := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Add Template", "Add Template Callback"),
-			tgbotapi.NewInlineKeyboardButtonData("Remove Template", "Remove Template Callback"),)
+	templatesKeyboard_main := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Add Template", "Add Template Callback"),)
 	var templatesKeyboard [][]tgbotapi.InlineKeyboardButton
 	templatesKeyboard = append(templatesKeyboard, templatesKeyboard_main)
 	
@@ -202,3 +202,36 @@ var ReturnToClassesKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 var ReturnToTemplatesKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Return back", "Return to templates.")),
 )
+
+
+func UseTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+	parts := strings.Fields(update.CallbackQuery.Data)
+	templateID_str := parts[len(parts) - 1]
+	// templateID, _ := strconv.Atoi(parts[len(parts) - 1])
+	classes, err := db.GetClassesByUserID(update.CallbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+
+	msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "-- Enter the class ID you want to use the template with -- \n\n")
+	if len(classes) == 0 {
+		msg.Text += "\t\tYou don't have classes. Go to Classes to add a new class."
+	} else {
+		for i, class := range classes {
+			grade := strconv.Itoa(class.Grade)
+			classid := strconv.Itoa(class.ID)
+			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + class.Name + " - Grade: " + grade + " - ID: " + classid + "\n"
+		}
+		_, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "Template_Usage_Enter_Class_ID")
+		if err != nil {
+			return err
+		}
+	}	
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID_str),
+		),
+	)
+	_, err = bot.Send(&msg)
+	return err
+}
