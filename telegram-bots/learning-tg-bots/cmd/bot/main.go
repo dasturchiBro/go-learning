@@ -340,7 +340,10 @@ func main() {
 						}
 					}
 				} else if strings.Contains(stage, "Template_Usage_Enter_Class_ID") {
-					// There should be handlers to handle class entrance.
+					err := handlers.UseTemplateClassIDHandler(stage, update, bot)
+					if err != nil {
+						log.Print(err)
+					}
 				}
 
 

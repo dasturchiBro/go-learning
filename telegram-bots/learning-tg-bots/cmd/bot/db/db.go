@@ -140,8 +140,6 @@ func GetClassByUserID(chatID int64, id int) (models.Class, error) {
 		if err != nil {
 			return class, err
 		}
-	} else {
-		return class, errors.New("Class with ID" + strconv.Itoa(id) + "doesn't exist")
 	}
 	return class, nil
 }

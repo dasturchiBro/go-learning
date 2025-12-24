@@ -3,6 +3,7 @@ package handlers
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"xlsxbot/db"
+	"xlsxbot/models"
 	"strconv"
 	"encoding/json"
 	"strings"
@@ -222,7 +223,7 @@ func UseTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 			classid := strconv.Itoa(class.ID)
 			msg.Text += "\t\t" + strconv.Itoa(i+1) + ") Name: " + class.Name + " - Grade: " + grade + " - ID: " + classid + "\n"
 		}
-		_, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "Template_Usage_Enter_Class_ID")
+		_, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "Template_Usage_Enter_Class_ID " + templateID_str)
 		if err != nil {
 			return err
 		}
@@ -234,4 +235,41 @@ func UseTemplate(update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
 	)
 	_, err = bot.Send(&msg)
 	return err
+}
+
+func UseTemplateClassIDHandler(stage string, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+	chatID := update.Message.Chat.ID
+	parts := strings.Fields(stage)
+	templateID_str := parts[len(parts) - 1]
+	// templateID, _ := strconv.Atoi(templateID_str)
+	classID, err := strconv.Atoi(update.Message.Text)
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	if err != nil {
+		msg.Text = "Please enter a correct class ID. Try again."
+	} else {
+		class, err := db.GetClassByUserID(chatID, classID)
+		if err != nil {
+			msg.Text = "Something went wrong. Please try again." + err.Error()
+		} else if class == (models.Class{})  {
+			msg.Text = "Class with ID " + update.Message.Text + " doesn't exist. Please enter a valid ID."
+		} else {
+			students, err := db.GetStudentsByClassID(class.ID, chatID)
+			if err != nil {
+				return err
+			}
+			if len(students) == 0 {
+				msg.Text = "There are no students in the class. \nGo to Classes -> Class with ID " + update.Message.Text + " -> Add Students"
+			}
+		}
+	}
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID_str),
+		),
+	)
+
+
+
+	_, err = bot.Send(&msg)
+	return nil
 }
