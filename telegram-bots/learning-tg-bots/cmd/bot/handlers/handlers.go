@@ -241,24 +241,43 @@ func UseTemplateClassIDHandler(stage string, update tgbotapi.Update, bot *tgbota
 	chatID := update.Message.Chat.ID
 	parts := strings.Fields(stage)
 	templateID_str := parts[len(parts) - 1]
-	// templateID, _ := strconv.Atoi(templateID_str)
+	templateID, _ := strconv.Atoi(templateID_str)
 	classID, err := strconv.Atoi(update.Message.Text)
+	var mainErr error 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	if err != nil {
 		msg.Text = "Please enter a correct class ID. Try again."
 	} else {
 		class, err := db.GetClassByUserID(chatID, classID)
 		if err != nil {
-			msg.Text = "Something went wrong. Please try again." + err.Error()
+			msg.Text = "Something went wrong. Please try again."
+			mainErr = err
 		} else if class == (models.Class{})  {
 			msg.Text = "Class with ID " + update.Message.Text + " doesn't exist. Please enter a valid ID."
 		} else {
 			students, err := db.GetStudentsByClassID(class.ID, chatID)
 			if err != nil {
-				return err
+				mainErr = err
 			}
 			if len(students) == 0 {
 				msg.Text = "There are no students in the class. \nGo to Classes -> Class with ID " + update.Message.Text + " -> Add Students"
+			} else {
+				db.SetStageByUserID(update.Message.Chat.ID, "AddScoresToStudentTemplate_"+templateID_str+"_"+update.Message.Text+"_0_"+strconv.Itoa(len(students)))				
+				template, err := db.GetTemplateByUserID(chatID, templateID)
+				if err != nil {
+					mainErr = err
+				}
+				var criteria []string
+				err = json.Unmarshal(template.Criteria, &criteria)
+				if err != nil {
+					mainErr = err
+				}
+				criteriaShow := "\n\tCriteria:\n"
+				for _, c := range criteria {
+					criteriaShow += "\t\t" + c + "\n"
+				}
+				criteriaShow += "\n\nWhat scores do you want to add to the student " + students[0].Name + "? (Note that the scores should be entered in the same way as the criteria)"
+				msg.Text = criteriaShow
 			}
 		}
 	}
@@ -267,9 +286,67 @@ func UseTemplateClassIDHandler(stage string, update tgbotapi.Update, bot *tgbota
 			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID_str),
 		),
 	)
-
-
-
 	_, err = bot.Send(&msg)
-	return nil
+	if err != nil {
+		mainErr = err	
+	}
+	return mainErr
+}
+
+
+func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot *tgbotapi.BotAPI) error {
+	parts := strings.Split(stage, "_")
+	templateID := parts[1]
+	classID := parts[2]
+	studentNumber, _ := strconv.Atoi(parts[3])
+	studentsLen, _ := strconv.Atoi(parts[4])	
+	templateID_int, _ := strconv.Atoi(templateID)
+	classID_int, _ := strconv.Atoi(classID)
+	chatID := update.Message.Chat.ID
+	var mainErr error
+	msg := tgbotapi.NewMessage(chatID, "")
+	class, err := db.GetClassByUserID(chatID, classID_int)
+	if err != nil {
+		msg.Text = "Something went wrong. Please try again."
+		mainErr = err
+	} else if class == (models.Class{})  {
+		msg.Text = "Class with ID " + update.Message.Text + " doesn't exist."
+	} else {
+		students, err := db.GetStudentsByClassID(class.ID, chatID)
+		if err != nil {
+			mainErr = err
+		}
+		if len(students) == 0 {
+			msg.Text = "There are no students in the class. \nGo to Classes -> Class with ID " + update.Message.Text + " -> Add Students"
+		} else {
+			if studentNumber + 1 < studentsLen {
+				db.SetStageByUserID(update.Message.Chat.ID, "AddScoresToStudentTemplate_"+templateID+"_"+update.Message.Text+"_"+strconv.Itoa(studentNumber+1)+"_"+strconv.Itoa(len(students)))				
+				template, err := db.GetTemplateByUserID(chatID, templateID_int)
+				if err != nil {
+					mainErr = err
+				}
+
+				// ===TASK FOR 25.12.2025===
+				// CHECK FOR THE CORRECT WAY OF ENTERING CRITERIA AND FOR ENTERING NUMBER not STRINGS
+				// SAVE POINTS TO STUDENTS
+
+				var criteria []string
+				err = json.Unmarshal(template.Criteria, &criteria)
+				if err != nil {
+					mainErr = err
+				}
+				criteriaShow := "\n\tCriteria:\n"
+				for _, c := range criteria {
+					criteriaShow += "\t\t" + c + "\n"
+				}
+				criteriaShow += "\n\nWhat scores do you want to add to the student " + students[studentNumber+1].Name + "? (Note that the scores should be entered in the same way as the criteria)"
+				msg.Text = criteriaShow
+
+			}
+		}
+	}
+	if _, err := bot.Send(&msg); err != nil {
+		mainErr = err
+	}
+	return mainErr
 }

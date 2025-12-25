@@ -344,6 +344,11 @@ func main() {
 					if err != nil {
 						log.Print(err)
 					}
+				} else if strings.Contains(stage, "AddScoresToStudentTemplate_") {
+					err := handlers.AddScoresToStudentTemplateHandler(stage, update, bot)
+					if err != nil {
+						log.Print(err)
+					}
 				}
 
 
