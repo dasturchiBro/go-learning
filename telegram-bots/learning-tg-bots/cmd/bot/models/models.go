@@ -37,3 +37,20 @@ type Template struct {
 	Header []string
 	Criteria json.RawMessage 
 }
+
+type XLSXStudent struct {
+	Name string `json:"name"`
+	Points []float64 `json:"points"`
+}
+
+type XLSXRequest struct {
+	Header []string `json:"header"`
+	Criteria []string `json:"criteria"`
+	Students []XLSXStudent `json:"students"`
+}
+
+
+
+type URL struct {
+	URL string
+}

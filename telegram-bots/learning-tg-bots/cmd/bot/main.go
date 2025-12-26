@@ -17,6 +17,7 @@ import (
 func AppInit() {
 	var err error
 	app.DB, err = db.Connect()
+	app.URL = "https://enormously-subarcuated-trudy.ngrok-free.dev/v1/xlsx"
 	if err != nil {
 		log.Fatal("couldn't connect to db: ", err)
 	}

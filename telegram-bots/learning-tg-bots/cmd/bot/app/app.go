@@ -6,4 +6,5 @@ import (
 
 var (
 	DB *pgxpool.Pool
+	URL string
 )

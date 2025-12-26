@@ -4,9 +4,13 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"xlsxbot/db"
 	"xlsxbot/models"
+	"xlsxbot/app"
 	"strconv"
 	"encoding/json"
 	"strings"
+	"net/http"
+	"bytes"
+	"io"
 )
 
 func SendPhoneNumberButton(chatID int64, bot *tgbotapi.BotAPI) error {
@@ -306,6 +310,8 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 	var mainErr error
 	msg := tgbotapi.NewMessage(chatID, "")
 	class, err := db.GetClassByUserID(chatID, classID_int)
+	showTemplates, sendFile := false, false
+	var doc tgbotapi.DocumentConfig
 	if err != nil {
 		msg.Text = "Something went wrong. Please try again."
 		mainErr = err
@@ -361,7 +367,15 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 					msg.Text = criteriaShow
 				} else {
 					db.SetStageByUserID(chatID, "main")
-					msg.Text = "✅ The file was successfully created."
+					URL, err := UseTemplateGetURL(chatID, classID_int, templateID_int)
+					showTemplates = true
+					if err != nil {
+						msg.Text = "Something went wrong. Please try again later." + err.Error()
+						showTemplates = false
+					}
+					doc = tgbotapi.NewDocument(chatID, tgbotapi.FileURL(URL))
+					doc.Caption = "✅ The file was successfully created.\n\n\tClass name:" + class.Name + "Class ID: " + strconv.Itoa(class.ID) + "\n\tNumber of students in the class: " + strconv.Itoa(len(students)) + "\n\tUsed template name: " + template.Name + "\n\tUsed template ID: " + strconv.Itoa(template.ID) 
+					sendFile = true
 				}
 			}
 		}
@@ -371,12 +385,69 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID),
 		),
 	)
-	if _, err := bot.Send(&msg); err != nil {
-		mainErr = err
+	if sendFile {
+		if _, err := bot.Send(&doc); err != nil {
+			mainErr = err
+		}
+	} else {
+		if _, err := bot.Send(&msg); err != nil {
+			mainErr = err
+		}
+	}
+	if showTemplates {
+		ShowTemplates(chatID, bot)
 	}
 	return mainErr
 }
 
-func UseTemplateFinal(chatID int64, classID int, templateID int) error {
-	return nil
+func UseTemplateGetURL(chatID int64, classID int, templateID int) (string, error) {
+	template, err := db.GetTemplateByUserID(chatID, templateID)
+	if err != nil {
+		return "", err
+	}
+	students, err := db.GetStudentsByClassID(classID, chatID)
+	if err != nil {
+		return "", err
+	}
+	var request models.XLSXRequest
+	request.Header = template.Header
+	err = json.Unmarshal(template.Criteria, &(request.Criteria))  
+	if err != nil {
+		return "", err
+	}
+
+	var xlsxStudents []models.XLSXStudent
+	for _, student := range students {
+		var xlsxStudent models.XLSXStudent
+		xlsxStudent.Name = student.Name 
+		var points []float64
+		err := json.Unmarshal(student.Points, &points)
+		if err != nil {
+			return "", err
+		}
+		xlsxStudent.Points = points
+		xlsxStudents = append(xlsxStudents, xlsxStudent)
+	}
+	request.Students = xlsxStudents
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.Post(
+		app.URL,
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var URLStruct models.URL
+	err = json.Unmarshal(body, &URLStruct)
+	if err != nil {
+		return "", err
+	}
+	return URLStruct.URL, nil
 }

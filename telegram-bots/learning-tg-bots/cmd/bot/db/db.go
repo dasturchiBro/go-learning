@@ -52,7 +52,7 @@ func SetStageByUserID(chatID int64, value string) (bool, error) {
 }
 
 func GetClassesByUserID(chatID int64) ([]models.Class, error) {
-	query := "SELECT * FROM classes WHERE user_id = $1"
+	query := "SELECT * FROM classes WHERE user_id = $1 ORDER BY id"
 	rows, err := app.DB.Query(context.Background(), query, chatID)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func RemoveClass(chatID int64, classID int) (bool, error) {
 }
 
 func GetTemplatesByUserID(chatID int64) ([]models.Template, error) {
-	query := "SELECT id, name, class_id, user_id, header, criteria FROM templates WHERE user_id = $1"
+	query := "SELECT id, name, class_id, user_id, header, criteria FROM templates WHERE user_id = $1 ORDER BY id"
 	rows, err := app.DB.Query(context.Background(), query, chatID)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func AddStudentToUser(student models.Student) (int, error) {
 }
 
 func GetStudentsByClassID(classID int, userID int64) ([]models.Student, error) {
-	query := "SELECT id, name, points, template_id FROM students WHERE class_id = $1 AND user_id = $2"
+	query := "SELECT id, name, points, template_id FROM students WHERE class_id = $1 AND user_id = $2 ORDER BY id"
 	rows, err := app.DB.Query(context.Background(), query, classID, userID)
 	if err != nil {
 		return nil, err
