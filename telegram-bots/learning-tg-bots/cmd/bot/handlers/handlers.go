@@ -286,6 +286,7 @@ func UseTemplateClassIDHandler(stage string, update tgbotapi.Update, bot *tgbota
 			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID_str),
 		),
 	)
+
 	_, err = bot.Send(&msg)
 	if err != nil {
 		mainErr = err	
@@ -299,7 +300,6 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 	templateID := parts[1]
 	classID := parts[2]
 	studentNumber, _ := strconv.Atoi(parts[3])
-	studentsLen, _ := strconv.Atoi(parts[4])	
 	templateID_int, _ := strconv.Atoi(templateID)
 	classID_int, _ := strconv.Atoi(classID)
 	chatID := update.Message.Chat.ID
@@ -310,7 +310,7 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 		msg.Text = "Something went wrong. Please try again."
 		mainErr = err
 	} else if class == (models.Class{})  {
-		msg.Text = "Class with ID " + update.Message.Text + " doesn't exist."
+		msg.Text = "Class with ID " + classID + " doesn't exist."
 	} else {
 		students, err := db.GetStudentsByClassID(class.ID, chatID)
 		if err != nil {
@@ -319,34 +319,64 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 		if len(students) == 0 {
 			msg.Text = "There are no students in the class. \nGo to Classes -> Class with ID " + update.Message.Text + " -> Add Students"
 		} else {
-			if studentNumber + 1 < studentsLen {
-				db.SetStageByUserID(update.Message.Chat.ID, "AddScoresToStudentTemplate_"+templateID+"_"+update.Message.Text+"_"+strconv.Itoa(studentNumber+1)+"_"+strconv.Itoa(len(students)))				
-				template, err := db.GetTemplateByUserID(chatID, templateID_int)
+			template, err := db.GetTemplateByUserID(chatID, templateID_int)
+			if err != nil {
+				mainErr = err
+			}
+			parts := strings.Split(update.Message.Text, "\n")
+			var numErr error
+			var points []int
+			for _, p := range parts {
+				point, err := strconv.Atoi(p)
 				if err != nil {
-					mainErr = err
+					numErr = err 
+					break
 				}
-
-				// ===TASK FOR 25.12.2025===
-				// CHECK FOR THE CORRECT WAY OF ENTERING CRITERIA AND FOR ENTERING NUMBER not STRINGS
-				// SAVE POINTS TO STUDENTS
-
-				var criteria []string
-				err = json.Unmarshal(template.Criteria, &criteria)
-				if err != nil {
-					mainErr = err
-				}
-				criteriaShow := "\n\tCriteria:\n"
+				points = append(points, point)
+			}
+			var criteria []string
+			err = json.Unmarshal(template.Criteria, &criteria)
+			if err != nil {
+				mainErr = err
+			}
+			if len(parts) != len(criteria) || numErr != nil {
+				msg.Text = "❌ Criteria were not added in a correct way. Enter only integer numbers each from a new line. \nHere is the correct form:"
+				criteriaShow := "\n"
 				for _, c := range criteria {
 					criteriaShow += "\t\t" + c + "\n"
 				}
-				criteriaShow += "\n\nWhat scores do you want to add to the student " + students[studentNumber+1].Name + "? (Note that the scores should be entered in the same way as the criteria)"
-				msg.Text = criteriaShow
-
+				msg.Text += criteriaShow
+			} else {
+				student := students[studentNumber]
+				var json_err error
+				student.Points, json_err = json.Marshal(points)
+				_, err := db.InsertPointsToStudent(student)
+				if err != nil || json_err != nil {
+					mainErr = err
+					msg.Text = "Something went wrong. Please try again."
+				} else if studentNumber + 1 < len(students) {
+					db.SetStageByUserID(chatID, "AddScoresToStudentTemplate_"+templateID+"_"+classID+"_"+strconv.Itoa(studentNumber+1)+"_"+strconv.Itoa(len(students)))							
+					criteriaShow := "\n\t✅ Accepted. Next. \n\n"
+					criteriaShow += "\n\nWhat scores do you want to add to the student " + students[studentNumber+1].Name + "? (Note that the scores should be entered in the same way as the criteria)"
+					msg.Text = criteriaShow
+				} else {
+					db.SetStageByUserID(chatID, "main")
+					msg.Text = "✅ The file was successfully created."
+				}
 			}
 		}
 	}
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID),
+		),
+	)
 	if _, err := bot.Send(&msg); err != nil {
 		mainErr = err
 	}
 	return mainErr
+}
+
+func UseTemplateFinal(chatID int64, classID int, templateID int) error {
+	return nil
 }

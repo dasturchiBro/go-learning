@@ -212,3 +212,10 @@ func DeleteTemplate(templateID int, userID int64) (bool, error) {
 	}
 	return false, nil
 }
+
+func InsertPointsToStudent(student models.Student) (string, error) {
+	query := "UPDATE students SET points = $1 WHERE user_id = $2 AND class_id = $3 and id = $4 RETURNING name"
+	var name string
+	err := app.DB.QueryRow(context.Background(), query, student.Points, student.UserID, student.ClassID, student.ID).Scan(&name)
+	return name, err
+}
