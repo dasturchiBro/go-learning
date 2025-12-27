@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"bytes"
 	"io"
+
+	"log"
 )
 
 func SendPhoneNumberButton(chatID int64, bot *tgbotapi.BotAPI) error {
@@ -310,7 +312,7 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 	var mainErr error
 	msg := tgbotapi.NewMessage(chatID, "")
 	class, err := db.GetClassByUserID(chatID, classID_int)
-	showTemplates, sendFile := false, false
+	showTemplates := false
 	var doc tgbotapi.DocumentConfig
 	if err != nil {
 		msg.Text = "Something went wrong. Please try again."
@@ -367,15 +369,19 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 					msg.Text = criteriaShow
 				} else {
 					db.SetStageByUserID(chatID, "main")
-					URL, err := UseTemplateGetURL(chatID, classID_int, templateID_int)
+					data, err := UseTemplateGetData(chatID, classID_int, templateID_int)
 					showTemplates = true
 					if err != nil {
-						msg.Text = "Something went wrong. Please try again later." + err.Error()
+						msg.Text = "Something went wrong. Please try again later.\n\n" + err.Error()
 						showTemplates = false
 					}
-					doc = tgbotapi.NewDocument(chatID, tgbotapi.FileURL(URL))
-					doc.Caption = "✅ The file was successfully created.\n\n\tClass name:" + class.Name + "Class ID: " + strconv.Itoa(class.ID) + "\n\tNumber of students in the class: " + strconv.Itoa(len(students)) + "\n\tUsed template name: " + template.Name + "\n\tUsed template ID: " + strconv.Itoa(template.ID) 
-					sendFile = true
+					doc = tgbotapi.NewDocument(chatID, 
+						tgbotapi.FileBytes{
+							Name: class.Name+".xlsx",
+							Bytes: data,
+						},
+					)
+					doc.Caption = "✅ The file was successfully created.\n\n\tClass name: " + class.Name + "\n\tClass ID: " + strconv.Itoa(class.ID) + "\n\tNumber of students in the class: " + strconv.Itoa(len(students)) + "\n\tUsed template name: " + template.Name + "\n\tUsed template ID: " + strconv.Itoa(template.ID) 
 				}
 			}
 		}
@@ -385,35 +391,33 @@ func AddScoresToStudentTemplateHandler(stage string, update tgbotapi.Update, bot
 			tgbotapi.NewInlineKeyboardButtonData("Return back.", "Manage template with ID " + templateID),
 		),
 	)
-	if sendFile {
+	if showTemplates {
 		if _, err := bot.Send(&doc); err != nil {
 			mainErr = err
 		}
+		ShowTemplates(chatID, bot)
 	} else {
 		if _, err := bot.Send(&msg); err != nil {
 			mainErr = err
 		}
 	}
-	if showTemplates {
-		ShowTemplates(chatID, bot)
-	}
 	return mainErr
 }
 
-func UseTemplateGetURL(chatID int64, classID int, templateID int) (string, error) {
+func UseTemplateGetData(chatID int64, classID int, templateID int) ([]byte, error) {
 	template, err := db.GetTemplateByUserID(chatID, templateID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	students, err := db.GetStudentsByClassID(classID, chatID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var request models.XLSXRequest
 	request.Header = template.Header
 	err = json.Unmarshal(template.Criteria, &(request.Criteria))  
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var xlsxStudents []models.XLSXStudent
@@ -423,7 +427,7 @@ func UseTemplateGetURL(chatID int64, classID int, templateID int) (string, error
 		var points []float64
 		err := json.Unmarshal(student.Points, &points)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		xlsxStudent.Points = points
 		xlsxStudents = append(xlsxStudents, xlsxStudent)
@@ -431,7 +435,7 @@ func UseTemplateGetURL(chatID int64, classID int, templateID int) (string, error
 	request.Students = xlsxStudents
 	jsonData, err := json.Marshal(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := http.Post(
 		app.URL,
@@ -439,7 +443,7 @@ func UseTemplateGetURL(chatID int64, classID int, templateID int) (string, error
 		bytes.NewBuffer(jsonData),
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -447,7 +451,17 @@ func UseTemplateGetURL(chatID int64, classID int, templateID int) (string, error
 	var URLStruct models.URL
 	err = json.Unmarshal(body, &URLStruct)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return URLStruct.URL, nil
+	resp2, err := http.Get(URLStruct.URL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp2.Body.Close()
+	data, err := io.ReadAll(resp2.Body)
+	if err != nil {
+		return nil, err
+	}
+	log.Print(string(data))
+	return data, nil
 }

@@ -246,12 +246,12 @@ func main() {
 					success := false
 					var templateID int
 					if len(parts) != 4 {
-						msg.Text = "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1-chorak, 4-chorak)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)"
+						msg.Text = "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1, 4)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)"
 						msg.ReplyMarkup = handlers.ReturnToTemplatesKeyboard
 					} else {
 						_, err := strconv.Atoi(parts[1])
 						if err != nil {
-							msg.Text = "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1-chorak, 4-chorak)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)"
+							msg.Text = "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1, 3)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)"
 							msg.ReplyMarkup = handlers.ReturnToTemplatesKeyboard
 						} else {
 							var newTemplate models.Template
@@ -522,7 +522,7 @@ func main() {
 					log.Printf("An error occured while deleting a message: %v", err)
 				}
 				exists, err := db.SetStageByUserID(update.CallbackQuery.From.ID, "add_template")
-				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1-chorak, 4-chorak)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)")
+				msg := tgbotapi.NewMessage(update.CallbackQuery.From.ID, "*Please enter the following template information:\n*Enter each value on a new line, in this exact order:\n\tName\n\tGrade (e.g. 6, 7, 11)\n\tQuarter (e.g. 1, 3)\n\tExam type (e.g. 1-BSB, CHSB, 2-BSB)")
 				if err != nil {
 					log.Print(err)
 					msg.Text = "Something went wrong. Please try again later."
