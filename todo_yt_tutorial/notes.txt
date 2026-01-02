@@ -1,0 +1,7 @@
+create folders
+set up main.go and go mod init
+install: Gin, Pgx, JWT 
+install go-migrate: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+install bcrypt: go get -u golang.org/x/crypto/bcrypt
+install godotenv: go get -u github.com/joho/godotenv
+install air: go install github.com/air-verse/air@latest
