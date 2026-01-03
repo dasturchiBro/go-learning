@@ -1,3 +1,4 @@
+# MAIN SETUP
 create folders
 set up main.go and go mod init
 install: Gin, Pgx, JWT 
@@ -5,3 +6,51 @@ install go-migrate: go install -tags 'postgres' github.com/golang-migrate/migrat
 install bcrypt: go get -u golang.org/x/crypto/bcrypt
 install godotenv: go get -u github.com/joho/godotenv
 install air: go install github.com/air-verse/air@latest
+
+# AIR
+to initialize AIR, you have to run: air init
+change cmd = "go build -o ./tmp/main.exe ./cmd/api" in .air.toml file
+
+
+# Working with DATABASE
+you can get access to the postgres CLI by running: psql -U postgres
+to see databases: \l
+to create a new database: CREATE DATABASE todo_api_yt;
+to connect to a database: \c database_name
+to see tables: \dt
+
+
+# ENVIRONMENT VARIABLES
+create a .env file in the root directory with the following variables:
+PORT=8080
+DATABASE_URL=postgres://postgres:12345@localhost:5432/todo_api_yt?sslmode=disable
+
+# CONFIGURATION
+create a config package in internal/config/config.go
+create a Config struct to hold the configuration values
+create a Load function to load environment variables from the .env file using godotenv
+use godotenv to load the .env file and populate the Config struct
+return the Config struct
+
+# DATABASE CONFIGURATION
+create a database package in internal/database/database.go
+use pgxpool to create a connection pool to the PostgreSQL database
+create a Connect function that takes a database URL and returns a connection pool
+
+# MAIN SETUP
+handle config and database connection in main.go
+load configuration using the Load function from the config package
+establish a database connection using the Connect function from the database package
+defer closing the database connection pool when the application exits
+handle errors appropriately 
+
+# SET UP MIGRATIONS
+create a migrations folder in the root directory    
+create an initial migration file using the command:
+    migrate create -ext sql -dir ./migrations -seq create_todos_table
+set up the todos table in the migration file with fields: id, title, completed, created_at, updated_at
+create a scripts folder in the root directory with a migrate.ps1 file to run migrations
+
+# RUN MIGRATIONS
+run the migrations using the powershell script:
+    ./scripts/migrate.ps1 up
