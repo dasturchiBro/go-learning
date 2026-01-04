@@ -1,0 +1,33 @@
+package handlers
+
+import (
+	"net/http"
+	"todo_api/internal/repository"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type CreateTodoInput struct {
+	Title     string `json:"title"`
+	Completed bool   `json:"completed"`
+}
+
+func CreateTodoHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var input CreateTodoInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid input: " + err.Error(),
+			})
+			return
+		}
+		todo, err := repository.CreateTodo(pool, input.Title, input.Completed)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to create todo: " + err.Error(),
+			})
+		}
+		c.JSON(http.StatusCreated, todo)
+	}
+}

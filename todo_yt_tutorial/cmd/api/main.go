@@ -4,6 +4,7 @@ import (
 	"log"
 	"todo_api/internal/config"
 	"todo_api/internal/database"
+	"todo_api/internal/handlers"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,12 +25,7 @@ func main() {
 
 	var router *gin.Engine = gin.Default()
 	router.SetTrustedProxies(nil)
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message":  "Welcome to the To-Do API!",
-			"status":   "OK",
-			"database": "Connected",
-		})
-	})
+	router.POST("/todos", handlers.CreateTodoHandler(pool))
+
 	router.Run(":3000")
 }

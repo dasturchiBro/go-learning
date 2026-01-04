@@ -19,7 +19,7 @@ func Load() (*Config, error) {
 	}
 
 	config := &Config{
-		DatabaseURL: os.Getenv("DATABASE_URL"),
+		DatabaseURL: os.Getenv("DATABASE"),
 		Port:        os.Getenv("PORT"),
 	}
 
