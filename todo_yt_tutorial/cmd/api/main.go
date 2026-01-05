@@ -26,6 +26,8 @@ func main() {
 	var router *gin.Engine = gin.Default()
 	router.SetTrustedProxies(nil)
 	router.POST("/todos", handlers.CreateTodoHandler(pool))
+	router.GET("/todos/:id", handlers.GetTodoByIDHandler(pool))
+	router.GET("/todos", handlers.GetAllTodosHandler(pool))
 
 	router.Run(":3000")
 }

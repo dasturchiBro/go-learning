@@ -65,3 +65,4 @@ create a CreateTodo function in the repository package to insert a new todo into
 create a handlers package
 create a CreateTodoInput struct to represent the input data for creating a todo
 create a CreateTodoHandler function to handle the creation of a new todo
+create all handlers in one file in the handlers package
