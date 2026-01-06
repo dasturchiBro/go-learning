@@ -11,14 +11,14 @@ import (
 
 
 type Person struct {
-	Name string
-	Age int
-	Projects []string
+	Full_name string
+	Id int
+	Role string
 }
 
-func (p Person) getInfo() string {
-	return fmt.Sprintf("Name: %s \nAge: %d\n", p.Name, p.Age)
-}
+// func (p Person) getInfo() string {
+// 	return fmt.Sprintf("Name: %s \nAge: %d\n", p.Name, p.Age)
+// }
 
 func connect() *pgxpool.Pool {
 	db, err := pgxpool.New(context.Background(), "postgres://postgres:12345@localhost:5432/fastapi_new")
@@ -30,10 +30,24 @@ func connect() *pgxpool.Pool {
 
 
 func home_page(w http.ResponseWriter, r *http.Request) {
-	john := Person{"John Doe", 19, []string{"IoT Smart Home", "Green House Project", "Learning Program"}}
+	var users []Person
 
+	rows, err := connect().Query(context.Background(), "SELECT id, full_name, role FROM users")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()	
+
+	for rows.Next() {
+		var p Person
+		if err := rows.Scan(&p.Id, &p.Full_name, &p.Role); err != nil {
+			log.Fatal(err)
+		}
+		users = append(users, p)
+	}
+	fmt.Println(users)
 	tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	err := tmpl.Execute(w, john)
+	err = tmpl.Execute(w, users)
 	if err != nil {
 		log.Fatal(err)
 	}

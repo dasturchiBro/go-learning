@@ -6,11 +6,12 @@ import (
 	"todo_api/internal/repository"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type CreateTodoInput struct {
-	Title     string `json:"title"`
+	Title     string `json:"title" binding:"required"`
 	Completed bool   `json:"completed"`
 }
 
@@ -19,13 +20,7 @@ func CreateTodoHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 		var input CreateTodoInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid input: " + err.Error(),
-			})
-			return
-		}
-		if input.Title == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Title cannot be empty",
+				"error": err.Error(),
 			})
 			return
 		}
@@ -64,6 +59,60 @@ func GetTodoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 		todo, err := repository.GetTodoByID(pool, id)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, todo)
+	}
+}
+
+type UpdateTodoInput struct {
+	Title     *string `json:"title"`
+	Completed *bool   `json:"completed"`
+}
+
+func UpdateTodoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+			return
+		}
+		var input UpdateTodoInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
+			return
+		}
+
+		if input.Title == nil && input.Completed == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+			return
+		}
+
+		todo, err := repository.GetTodoByID(pool, id)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		title := todo.Title
+		if input.Title != nil {
+			title = *input.Title
+		}
+		var completed bool = todo.Completed
+		if input.Completed != nil {
+			completed = *input.Completed
+		}
+		todo, err = repository.UpdateTodoByID(pool, id, title, completed)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
