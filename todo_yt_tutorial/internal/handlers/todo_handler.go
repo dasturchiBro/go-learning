@@ -120,3 +120,26 @@ func UpdateTodoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 		c.JSON(http.StatusOK, todo)
 	}
 }
+
+func DeleteTodoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+			return
+		}
+
+		err = repository.DeleteTodoByID(pool, id)
+		if err != nil {
+			if err.Error() == "todo not found" || err.Error() == "no rows changed" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Todo not found"})
+				return
+			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}

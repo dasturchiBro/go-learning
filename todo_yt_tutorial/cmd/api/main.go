@@ -29,6 +29,7 @@ func main() {
 	router.GET("/todos/:id", handlers.GetTodoByIDHandler(pool))
 	router.GET("/todos", handlers.GetAllTodosHandler(pool))
 	router.PUT("/todos/:id", handlers.UpdateTodoByIDHandler(pool))
+	router.DELETE("/todos/:id", handlers.DeleteTodoByIDHandler(pool))
 
-	router.Run(":3001")
+	router.Run(":300")
 }

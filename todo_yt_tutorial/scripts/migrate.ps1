@@ -8,15 +8,15 @@ $command = $args[0]
 $name = $args[1]
 
 switch ($command) {
-    "up" { migrate -path migrations -database $env:DATABASE_URL up }
+    "up" { migrate -path migrations -database $env:DATABASE up }
     "down" { 
         $count = if ($name) { $name } else { "1" }
         Write-Host "Rolling back $count migration(s). Continue? [y/N]"
         $confirm = Read-Host
         if ($confirm -eq 'y') {
-            migrate -path migrations -database $env:DATABASE_URL down $count
+            migrate -path migrations -database $env:DATABASE down $count
         }
     }
     "create" { migrate create -ext sql -dir migrations -seq $name }
-    "force" { migrate -path migrations -database $env:DATABASE_URL force $name }
+    "force" { migrate -path migrations -database $env:DATABASE force $name }
 }

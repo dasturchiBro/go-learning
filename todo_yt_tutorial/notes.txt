@@ -66,3 +66,15 @@ create a handlers package
 create a CreateTodoInput struct to represent the input data for creating a todo
 create a CreateTodoHandler function to handle the creation of a new todo
 create all handlers in one file in the handlers package
+
+# SET UP MIGRATIONS FOR USERS TABLE
+after setting up all the handlers, it is time to create authorization
+create a new migration file for the users table:
+    migrate create -ext sql -dir ./migrations -seq create_users_table
+set up the users table in the migration file with fields: id, email, password, created_at, updated_at
+run the new migration using the powershell script:
+    ./scripts/migrate.ps1 up
+
+
+# SET UP USER MODEL
+create a User struct in the models package to represent the users table

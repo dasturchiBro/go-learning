@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 	"todo_api/internal/models"
 
@@ -84,4 +85,20 @@ func UpdateTodoByID(pool *pgxpool.Pool, id int, title string, completed bool) (*
 		return nil, err
 	}
 	return &todo, nil
+}
+
+func DeleteTodoByID(pool *pgxpool.Pool, id int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := "DELETE FROM todos_user WHERE id = $1"
+	commentTag, err := pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	if commentTag.RowsAffected() == 0 {
+		return errors.New("todo not found")
+	}
+	return nil
 }
