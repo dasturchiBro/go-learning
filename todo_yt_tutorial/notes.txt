@@ -78,3 +78,22 @@ run the new migration using the powershell script:
 
 # SET UP USER MODEL
 create a User struct in the models package to represent the users table
+
+# SET UP USER REPOSITORY
+create a CreateUser function in the repository package to insert a new user into the database
+use context and time packages to set a timeout for database operations
+use pgxpool to execute the insert query and return the created user
+create a GetUserByEmail function in the repository package to retrieve a user by email from the database
+use context and time packages to set a timeout for database operations
+use pgxpool to execute the select query and return the retrieved user
+create a GetUserByID function in the repository package to retrieve a user by ID from the database
+use context and time packages to set a timeout for database operations
+use pgxpool to execute the select query and return the retrieved user
+create a DeleteUser function in the repository package to delete a user by ID from the database
+use context and time packages to set a timeout for database operations
+use pgxpool to execute the delete query
+
+# SET UP USER HANDLERS
+create a RegisterUserInput struct to represent the input data for registering a user
+create a RegisterUserHandler function to handle user registration
+hash the user's password using bcrypt before storing it in the database

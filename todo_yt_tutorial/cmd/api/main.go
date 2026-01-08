@@ -31,5 +31,6 @@ func main() {
 	router.PUT("/todos/:id", handlers.UpdateTodoByIDHandler(pool))
 	router.DELETE("/todos/:id", handlers.DeleteTodoByIDHandler(pool))
 
+	router.POST("/auth/register", handlers.CreateUserHandler(pool))
 	router.Run(":300")
 }
