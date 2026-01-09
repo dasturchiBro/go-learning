@@ -97,3 +97,25 @@ use pgxpool to execute the delete query
 create a RegisterUserInput struct to represent the input data for registering a user
 create a RegisterUserHandler function to handle user registration
 hash the user's password using bcrypt before storing it in the database
+create a LoginUserInput struct to represent the input data for user login
+create a LoginUserHandler function to handle user login
+verify the user's password using bcrypt during login
+generate a JWT token upon successful login:
+    use the github.com/golang-jwt/jwt/v4 package to create and sign JWT tokens
+    use jwt.MapClaims to set custom claims such as user ID and expiration time
+    use jwt.NewWithClaims to create and sign the token
+    Generates a new JWT token using the provided claims and signs it with the application's secret key.
+    The token is created using the HMAC SHA-256 signing method (HS256).
+    Returns the signed JWT token string or an error if signing fails.
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString([]byte(ctx.JWTSecret))
+
+# SET UP AUTH MIDDLEWARE
+create an AuthMiddleware function to protect routes
+get the Authorization header from the request
+check if the header is present, if not c.Abort with status Unauthorized
+trim Bearer prefix from the token string
+extract and validate the JWT token from the Authorization header
+use jwt.Parse to parse and validate the token
+set the user ID in the Gin context for use in protected routes
+"exp":     time.Now().Add(24 * time.Hour).Unix(),

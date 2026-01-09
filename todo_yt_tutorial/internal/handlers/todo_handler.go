@@ -143,3 +143,4 @@ func DeleteTodoByIDHandler(pool *pgxpool.Pool) gin.HandlerFunc {
 		c.Status(http.StatusNoContent)
 	}
 }
+
