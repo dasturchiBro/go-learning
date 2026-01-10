@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 	"todo_api/internal/config"
 
 	"github.com/gin-gonic/gin"
@@ -27,31 +28,43 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if token.Method.Alg() != jwt.SigningMethodES256.Alg() {
+			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			return []byte(cfg.JWTSecret), nil
 		})
 
 		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token "})
 			c.Abort()
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
-		if ok != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token "})
 			c.Abort()
 			return
 		}
 
 		userID, ok := claims["user_id"].(string)
-		if ok != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token "})
 			c.Abort()
 			return
 		}
-		fmt.Println(userID) // CHECK THE EXP TIME
+
+		if exp, ok := claims["exp"].(float64); ok {
+			expirationTime := time.Unix(int64(exp), 0)
+
+			if time.Now().After(expirationTime) {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token has expired"})
+				c.Abort()
+				return
+			}
+		}
+
+		c.Set("user_id", userID)
+		c.Next()
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"todo_api/internal/config"
 	"todo_api/internal/database"
 	"todo_api/internal/handlers"
+	"todo_api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,12 +26,22 @@ func main() {
 
 	var router *gin.Engine = gin.Default()
 	router.SetTrustedProxies(nil)
-	router.POST("/todos", handlers.CreateTodoHandler(pool))
-	router.GET("/todos/:id", handlers.GetTodoByIDHandler(pool))
-	router.GET("/todos", handlers.GetAllTodosHandler(pool))
-	router.PUT("/todos/:id", handlers.UpdateTodoByIDHandler(pool))
-	router.DELETE("/todos/:id", handlers.DeleteTodoByIDHandler(pool))
 
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
-	router.Run(":300")
+	router.POST("/auth/login", handlers.LoginUserHandler(pool, cfg))
+
+	protected := router.Group("/todos")
+
+	protected.Use(middleware.AuthMiddleware(cfg))
+
+	protected.POST("", handlers.CreateTodoHandler(pool))
+	protected.GET("/:id", handlers.GetTodoByIDHandler(pool))
+	protected.GET("", handlers.GetAllTodosHandler(pool))
+	protected.PUT("/:id", handlers.UpdateTodoByIDHandler(pool))
+	protected.DELETE("/:id", handlers.DeleteTodoByIDHandler(pool))
+
+	// Middleware Test Route
+	router.GET("/test", handlers.TestProtectedHandler())
+
+	router.Run(":3000")
 }

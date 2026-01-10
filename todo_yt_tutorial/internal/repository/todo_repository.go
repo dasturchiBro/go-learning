@@ -9,18 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func CreateTodo(pool *pgxpool.Pool, title string, completed bool) (*models.Todo, error) {
+func CreateTodo(pool *pgxpool.Pool, title string, completed bool, userid string) (*models.Todo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var todo models.Todo
 	query := `
-		INSERT INTO todos_user (title, completed)
-		VALUES ($1, $2)
-		RETURNING id, title, completed, created_at, updated_at
+		INSERT INTO todos_user (title, completed, user_id)
+		VALUES ($1, $2, $3)
+		RETURNING id, title, completed, created_at, updated_at, user_id
 	`
-	err := pool.QueryRow(ctx, query, title, completed).Scan(
-		&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt,
+	err := pool.QueryRow(ctx, query, title, completed, userid).Scan(
+		&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt, &todo.UserID,
 	)
 	if err != nil {
 		return nil, err
@@ -28,12 +28,12 @@ func CreateTodo(pool *pgxpool.Pool, title string, completed bool) (*models.Todo,
 	return &todo, nil
 }
 
-func GetAllTodos(pool *pgxpool.Pool) ([]models.Todo, error) {
+func GetAllTodos(pool *pgxpool.Pool, userid string) ([]models.Todo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := "SELECT id, title, completed, created_at, updated_at FROM todos_user"
-	rows, err := pool.Query(ctx, query)
+	query := "SELECT id, title, completed, created_at, updated_at, user_id FROM todos_user WHERE user_id = $1"
+	rows, err := pool.Query(ctx, query, userid)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +48,7 @@ func GetAllTodos(pool *pgxpool.Pool) ([]models.Todo, error) {
 			&todo.Completed,
 			&todo.CreatedAt,
 			&todo.UpdatedAt,
+			&todo.UserID,
 		)
 		if err != nil {
 			return nil, err
@@ -61,38 +62,38 @@ func GetAllTodos(pool *pgxpool.Pool) ([]models.Todo, error) {
 	return todos, nil
 }
 
-func GetTodoByID(pool *pgxpool.Pool, id int) (*models.Todo, error) {
+func GetTodoByID(pool *pgxpool.Pool, id int, userid string) (*models.Todo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := "SELECT id, title, completed, created_at, updated_at FROM todos_user WHERE id = $1"
+	query := "SELECT id, title, completed, created_at, updated_at, user_id FROM todos_user WHERE id = $1 AND user_id = $2"
 	var todo models.Todo
-	err := pool.QueryRow(ctx, query, id).Scan(&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
+	err := pool.QueryRow(ctx, query, id, userid).Scan(&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt, &todo.UserID)
 	if err != nil {
 		return nil, err
 	}
 	return &todo, nil
 }
 
-func UpdateTodoByID(pool *pgxpool.Pool, id int, title string, completed bool) (*models.Todo, error) {
+func UpdateTodoByID(pool *pgxpool.Pool, id int, title string, completed bool, userid string) (*models.Todo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var todo models.Todo
-	query := "UPDATE todos_user SET title=$1, completed=$2, updated_at=$3 WHERE id = $4 RETURNING id, title, completed, created_at, updated_at"
-	err := pool.QueryRow(ctx, query, title, completed, time.Now(), id).Scan(&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt)
+	query := "UPDATE todos_user SET title=$1, completed=$2, updated_at=$3 WHERE id = $4 AND user_id = $5 RETURNING id, title, completed, created_at, updated_at, user_id"
+	err := pool.QueryRow(ctx, query, title, completed, time.Now(), id, userid).Scan(&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt, &todo.UpdatedAt, &todo.UserID)
 	if err != nil {
 		return nil, err
 	}
 	return &todo, nil
 }
 
-func DeleteTodoByID(pool *pgxpool.Pool, id int) error {
+func DeleteTodoByID(pool *pgxpool.Pool, id int, userid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := "DELETE FROM todos_user WHERE id = $1"
-	commentTag, err := pool.Exec(ctx, query, id)
+	query := "DELETE FROM todos_user WHERE id = $1 AND user_id = $2"
+	commentTag, err := pool.Exec(ctx, query, id, userid)
 	if err != nil {
 		return err
 	}

@@ -100,3 +100,15 @@ func LoginUserHandler(pool *pgxpool.Pool, ctx *config.Config) gin.HandlerFunc {
 		c.JSON(http.StatusOK, LoginResponse{tokenString})
 	}
 }
+
+func TestProtectedHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("user_id")
+
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "user_not found in the context"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Everything okay!!!", "user_id": userID})
+	}
+}
