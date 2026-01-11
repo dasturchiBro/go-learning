@@ -6,7 +6,9 @@ import (
 	"todo_api/internal/database"
 	"todo_api/internal/handlers"
 	"todo_api/internal/middleware"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,7 +28,19 @@ func main() {
 
 	var router *gin.Engine = gin.Default()
 	router.SetTrustedProxies(nil)
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins: true,
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders: []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge: 12 * time.Hour,
+	}))
+	router.Use(middleware.CorsMiddleware())
 
+	router.OPTIONS("/", func(c *gin.Context) {
+		c.Status(204)
+	})
 	router.POST("/auth/register", handlers.CreateUserHandler(pool))
 	router.POST("/auth/login", handlers.LoginUserHandler(pool, cfg))
 
@@ -34,6 +48,12 @@ func main() {
 
 	protected.Use(middleware.AuthMiddleware(cfg))
 
+	protected.OPTIONS("", func(c *gin.Context) {
+		c.Status(204)
+	})
+	protected.OPTIONS("/:id", func(c *gin.Context) {
+		c.Status(204)
+	})
 	protected.POST("", handlers.CreateTodoHandler(pool))
 	protected.GET("/:id", handlers.GetTodoByIDHandler(pool))
 	protected.GET("", handlers.GetAllTodosHandler(pool))
